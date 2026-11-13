@@ -1,6 +1,6 @@
 # VulnWatch
 
-[![Validate VulnWatch](https://github.com/sch3lly-stack/VulnWatch/actions/workflows/ci.yml/badge.svg)](https://github.com/sch3lly-stack/VulnWatch/actions/workflows/ci.yml)
+[![Validate VulnWatch](https://github.com/JN-Schell/VulnWatch/actions/workflows/ci.yml/badge.svg)](https://github.com/JN-Schell/VulnWatch/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 **Know your exposure. Own your response.**
@@ -161,10 +161,10 @@ Development is tracked through GitHub Issues, milestones, and the repository pro
 - [Engineering instructions and definition of done](AGENTS.md)
 - [Contributing guide](CONTRIBUTING.md)
 - [Changelog](CHANGELOG.md)
-- [Project board](https://github.com/users/sch3lly-stack/projects/1)
-- [Issues](https://github.com/sch3lly-stack/VulnWatch/issues)
-- [Milestones](https://github.com/sch3lly-stack/VulnWatch/milestones)
-- [Pull requests](https://github.com/sch3lly-stack/VulnWatch/pulls)
+- [Project board](https://github.com/users/JN-Schell/projects/1)
+- [Issues](https://github.com/JN-Schell/VulnWatch/issues)
+- [Milestones](https://github.com/JN-Schell/VulnWatch/milestones)
+- [Pull requests](https://github.com/JN-Schell/VulnWatch/pulls)
 
 The maintainer merges their own pull requests after self-review because this is a solo-maintainer portfolio repository. That self-review is not represented as independent human approval.
 

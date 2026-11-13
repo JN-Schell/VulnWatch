@@ -2,7 +2,7 @@
 
 This file is the permanent operating agreement for every human or AI contributor working in this repository. Read it at the start of every development session. If another agent instruction file exists, it must not contradict this document.
 
-Repository: `sch3lly-stack/VulnWatch`  
+Repository: `JN-Schell/VulnWatch`  
 Default branch: `main`  
 License: MIT  
 Maintainer model: solo maintainer with autonomous AI assistance

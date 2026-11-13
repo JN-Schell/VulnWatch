@@ -10,6 +10,7 @@ All notable changes to VulnWatch are documented here. The format follows [Keep a
 - Contribution guide, pull request template, issue templates, changelog policy, and Architecture Decision Records.
 - CI concurrency controls to cancel superseded runs.
 - Public GitHub Project board with Backlog, Ready, In Progress, In Review, Testing, and Done columns, linked from the README.
+- Corrected repository and project-board URLs after the GitHub account rename to `JN-Schell`.
 
 ### Changed
 
@@ -41,5 +42,5 @@ All notable changes to VulnWatch are documented here. The format follows [Keep a
 - Production configuration fails closed when trusted origins are not HTTPS.
 - Demo seeding is restricted to development and test environments with an empty finding inventory.
 
-[Unreleased]: https://github.com/sch3lly-stack/VulnWatch/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/sch3lly-stack/VulnWatch/releases/tag/v0.1.0
+[Unreleased]: https://github.com/JN-Schell/VulnWatch/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/JN-Schell/VulnWatch/releases/tag/v0.1.0
