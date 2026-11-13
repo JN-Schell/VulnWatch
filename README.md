@@ -1,5 +1,8 @@
 # VulnWatch
 
+[![Validate VulnWatch](https://github.com/sch3lly-stack/VulnWatch/actions/workflows/ci.yml/badge.svg)](https://github.com/sch3lly-stack/VulnWatch/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 **Know your exposure. Own your response.**
 
 A defensive vulnerability management application for a small IT security team. Import structured scan results, prioritize with asset context, assign remediation, record evidence, and verify outcomes. The dashboard reads the database through an authenticated API; it is not a hardcoded CVE showcase.
@@ -142,6 +145,7 @@ If development ports are already in use, set `E2E_API_PORT=8001 E2E_WEB_PORT=517
 ## Architecture and documentation
 
 - [Architecture, ERD, invariants, and phased acceptance gates](docs/architecture.md)
+- [Architecture Decision Records](docs/adr/README.md)
 - [Import schemas and adapter extension guide](docs/imports.md)
 - [NVD synchronization and external API limitations](docs/nvd.md)
 - [API reference and authentication examples](docs/api.md)
@@ -149,6 +153,19 @@ If development ports are already in use, set `E2E_API_PORT=8001 E2E_WEB_PORT=517
 - [Threat model](docs/threat-model.md)
 - [Development roadmap](docs/roadmap.md)
 - [Validation record and known limitations](docs/validation.md)
+
+## Project governance
+
+Development is tracked through GitHub Issues, milestones, and the repository project board. Every meaningful change has an issue, a short-lived branch, a pull request, a documented engineering self-review, required CI checks, and a squash merge to `main`.
+
+- [Engineering instructions and definition of done](AGENTS.md)
+- [Contributing guide](CONTRIBUTING.md)
+- [Changelog](CHANGELOG.md)
+- [Issues](https://github.com/sch3lly-stack/VulnWatch/issues)
+- [Milestones](https://github.com/sch3lly-stack/VulnWatch/milestones)
+- [Pull requests](https://github.com/sch3lly-stack/VulnWatch/pulls)
+
+The maintainer merges their own pull requests after self-review because this is a solo-maintainer portfolio repository. That self-review is not represented as independent human approval.
 
 Interactive schema consumers can retrieve the authenticated `/api/openapi.json`. No unauthenticated API explorer is exposed. Architecture/ERD diagrams are Mermaid and render directly on GitHub.
 
