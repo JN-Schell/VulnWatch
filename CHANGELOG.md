@@ -13,6 +13,7 @@ All notable changes to VulnWatch are documented here. The format follows [Keep a
 ### Changed
 
 - Documentation now distinguishes engineering self-review from independent human approval.
+- Validation record reconciled with the hosted CI run, merged governance pull request, branch protection, repository security settings, and current test counts.
 
 ## [0.1.0] - 2026-11-13
 
