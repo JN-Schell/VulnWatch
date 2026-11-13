@@ -161,6 +161,7 @@ Development is tracked through GitHub Issues, milestones, and the repository pro
 - [Engineering instructions and definition of done](AGENTS.md)
 - [Contributing guide](CONTRIBUTING.md)
 - [Changelog](CHANGELOG.md)
+- [Project board](https://github.com/users/sch3lly-stack/projects/1)
 - [Issues](https://github.com/sch3lly-stack/VulnWatch/issues)
 - [Milestones](https://github.com/sch3lly-stack/VulnWatch/milestones)
 - [Pull requests](https://github.com/sch3lly-stack/VulnWatch/pulls)

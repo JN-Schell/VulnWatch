@@ -9,6 +9,7 @@ All notable changes to VulnWatch are documented here. The format follows [Keep a
 - Permanent engineering workflow in `AGENTS.md`.
 - Contribution guide, pull request template, issue templates, changelog policy, and Architecture Decision Records.
 - CI concurrency controls to cancel superseded runs.
+- Public GitHub Project board with Backlog, Ready, In Progress, In Review, Testing, and Done columns, linked from the README.
 
 ### Changed
 
