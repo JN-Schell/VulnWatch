@@ -2,7 +2,7 @@
 
 Local validation performed **November 13, 2026**, on macOS with Python 3.11.18, Node 26.11.0, uv 0.13.8 and a dedicated PostgreSQL 16.16 UTF-8 instance. Hosted validation ran in GitHub Actions on the same date with Python 3.12 / Node 22 / PostgreSQL 16. Test credentials and databases were disposable, not production accounts.
 
-Repository: <https://github.com/sch3lly-stack/VulnWatch>  
+Repository: <https://github.com/JN-Schell/VulnWatch>  
 Baseline commit: `9b36ee9`  
 Governance merge commit: `b6afa38` (pull request #2)
 
@@ -22,7 +22,7 @@ Governance merge commit: `b6afa38` (pull request #2)
 | Locked production Python dependencies | `pip-audit` reported no known vulnerabilities at validation time |
 | Frontend dependency audit | `npm audit` reported no known vulnerabilities at validation time |
 | Compose / GitHub Actions schemas | Validated against Compose specification and GitHub workflow JSON schemas |
-| Hosted CI | GitHub Actions run [43524392125](https://github.com/sch3lly-stack/VulnWatch/actions/runs/43524392125) on commit `3ec7ffe`: `backend`, `browser`, and `compose` all succeeded |
+| Hosted CI | GitHub Actions run [43524392125](https://github.com/JN-Schell/VulnWatch/actions/runs/43524392125) on commit `3ec7ffe`: `backend`, `browser`, and `compose` all succeeded |
 | Branch protection | Applied and read back through the API; required checks, strict branches, linear history, conversation resolution, no force pushes/deletions, no bypass for administrators. A controlled direct push was rejected with `GH006` |
 | Repository security settings | Dependabot alerts, automated security fixes, secret scanning, and push protection verified enabled; Actions restricted to GitHub-owned and verified Marketplace actions |
 | Live NVD connectivity | Actual HTTPS CVE-ID request succeeded; parsed `CVE-2021-44228` from the upstream response (not a fixture) |
