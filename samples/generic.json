@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0",
+  "findings": [
+    {"asset": "server-01", "cve_id": "CVE-2021-44228", "title": "Apache Log4j remote code execution", "description": "Scanner-reported finding. Validate affected version and reachability before remediation.", "cvss_score": 10.0, "locator": "tcp/443", "source": "sample-scanner"},
+    {"asset": "server-01", "external_id": "sample-scanner:tls-legacy", "title": "Legacy TLS configuration", "description": "Example non-CVE configuration finding.", "cvss_score": 5.3, "locator": "tcp/443", "source": "sample-scanner"}
+  ]
+}

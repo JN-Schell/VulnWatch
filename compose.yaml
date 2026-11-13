@@ -1,0 +1,72 @@
+name: vulnwatch
+x-backend: &backend
+  build:
+    context: .
+    dockerfile: backend/Dockerfile
+  environment: &backend-env
+    DATABASE_URL: postgresql+psycopg://vulnwatch:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/vulnwatch
+    ENVIRONMENT: ${ENVIRONMENT:-development}
+    TRUSTED_ORIGINS: ${TRUSTED_ORIGINS:-["http://localhost:8080"]}
+    ALLOWED_HOSTS: ${ALLOWED_HOSTS:-["localhost","127.0.0.1","api"]}
+    NVD_API_KEY: ${NVD_API_KEY:-}
+    NVD_INITIAL_DAYS: ${NVD_INITIAL_DAYS:-30}
+    SYNC_INTERVAL_SECONDS: ${SYNC_INTERVAL_SECONDS:-7200}
+  init: true
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  read_only: true
+  tmpfs: [/tmp]
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: vulnwatch
+      POSTGRES_USER: vulnwatch
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes: ["postgres_data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U vulnwatch -d vulnwatch"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+    restart: unless-stopped
+  migrate:
+    <<: *backend
+    command: [sh, -c, "alembic upgrade head && python -m app.cli bootstrap"]
+    depends_on:
+      db: { condition: service_healthy }
+  api:
+    <<: *backend
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+  worker:
+    <<: *backend
+    command: [python, -m, app.worker]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    restart: unless-stopped
+  web:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports: ["127.0.0.1:8080:8080"]
+    depends_on:
+      api: { condition: service_healthy }
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, "http://127.0.0.1:8080/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs: [/tmp, /var/cache/nginx, /var/run]
+    restart: unless-stopped
+volumes:
+  postgres_data:

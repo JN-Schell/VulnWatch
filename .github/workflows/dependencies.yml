@@ -1,0 +1,20 @@
+name: Dependency audits
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '19 8 * * 1'
+  pull_request:
+    paths: ['backend/uv.lock', 'frontend/package-lock.json']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: cd backend && uv export --frozen --no-dev --no-hashes --no-emit-project -o /tmp/requirements.txt && uvx pip-audit -r /tmp/requirements.txt
+      - run: cd frontend && npm ci && npm audit --audit-level=high

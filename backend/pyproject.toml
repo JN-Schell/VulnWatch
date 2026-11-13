@@ -1,0 +1,24 @@
+[project]
+name = "vulnwatch-api"
+version = "0.1.0"
+description = "Defensive vulnerability management API"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115,<1", "uvicorn[standard]>=0.34,<1",
+  "sqlalchemy>=2.0.38,<3", "alembic>=1.14,<2", "psycopg[binary]>=3.2,<4",
+  "pydantic-settings>=2.7,<3", "pwdlib[argon2]>=0.2,<1",
+  "httpx>=0.28,<1", "python-multipart>=0.0.20,<1",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.3,<10", "pytest-cov>=6,<8", "ruff>=0.11,<1"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 110
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]

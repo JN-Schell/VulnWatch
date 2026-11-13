@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "findings": [
+    {"asset":"edge-gateway-01","external_id":"demo:gateway-rce","title":"Remote code execution in edge gateway","cvss_score":9.8,"description":"SYNTHETIC DEMONSTRATION FINDING. Not an NVD CVE or a real scan result.","source":"demo-fixture","locator":"tcp/443"},
+    {"asset":"payments-api","external_id":"demo:dependency-rce","title":"Unsafe dependency deserialization","cvss_score":9.1,"description":"SYNTHETIC DEMONSTRATION FINDING. Review the dependency inventory and validate remediation.","source":"demo-fixture"},
+    {"asset":"identity-service","external_id":"demo:auth-bypass","title":"Authentication configuration weakness","cvss_score":8.8,"description":"SYNTHETIC DEMONSTRATION FINDING.","source":"demo-fixture"},
+    {"asset":"analytics-db","external_id":"demo:db-permissions","title":"Excessive database service permissions","cvss_score":7.5,"description":"SYNTHETIC DEMONSTRATION FINDING.","source":"demo-fixture"},
+    {"asset":"edge-gateway-01","external_id":"demo:tls-obsolete","title":"Obsolete TLS protocol enabled","cvss_score":5.3,"description":"SYNTHETIC DEMONSTRATION FINDING.","source":"demo-fixture"},
+    {"asset":"build-runner-02","external_id":"demo:runner-access","title":"Overprivileged build runner identity","cvss_score":8.1,"description":"SYNTHETIC DEMONSTRATION FINDING.","source":"demo-fixture"},
+    {"asset":"employee-portal","external_id":"demo:portal-header","title":"Missing browser security headers","cvss_score":3.1,"description":"SYNTHETIC DEMONSTRATION FINDING.","source":"demo-fixture"},
+    {"asset":"payments-api","external_id":"demo:verbose-errors","title":"Verbose service error responses","cvss_score":5.9,"description":"SYNTHETIC DEMONSTRATION FINDING.","source":"demo-fixture"},
+    {"asset":"identity-service","external_id":"demo:session-policy","title":"Session policy requires review","cvss_score":6.5,"description":"SYNTHETIC DEMONSTRATION FINDING.","source":"demo-fixture"},
+    {"asset":"analytics-db","external_id":"demo:db-encryption","title":"Backup encryption policy gap","cvss_score":6.2,"description":"SYNTHETIC DEMONSTRATION FINDING.","source":"demo-fixture"},
+    {"asset":"employee-portal","external_id":"demo:cookie-flags","title":"Application cookie policy weakness","cvss_score":4.3,"description":"SYNTHETIC DEMONSTRATION FINDING.","source":"demo-fixture"},
+    {"asset":"build-runner-02","external_id":"demo:outdated-package","title":"Outdated development package","cvss_score":2.7,"description":"SYNTHETIC DEMONSTRATION FINDING.","source":"demo-fixture"}
+  ]
+}
