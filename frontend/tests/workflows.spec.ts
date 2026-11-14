@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import path from "node:path";
 
 const password = process.env.E2E_PASSWORD;
@@ -6,6 +6,17 @@ if (!password)
   throw new Error(
     "Set E2E_PASSWORD for the administrator bootstrapped in the test database",
   );
+
+async function submitImport(page: Page) {
+  const response = page.waitForResponse((candidate) => {
+    if (candidate.request().method() !== "POST") return false;
+    return new URL(candidate.url()).pathname === "/api/imports";
+  });
+  await page
+    .getByRole("button", { name: "Validate & import findings" })
+    .click();
+  return response;
+}
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
@@ -30,16 +41,14 @@ test("real import, deduplication, assignment and verified remediation", async ({
   await page
     .getByLabel("Scan result file")
     .setInputFiles(path.resolve("../samples/generic.json"));
-  await page
-    .getByRole("button", { name: "Validate & import findings" })
-    .click();
+  const created = await submitImport(page);
+  expect(created.ok()).toBeTruthy();
   await expect(page.getByRole("status")).toContainText("Import processed");
   await page
     .getByLabel("Scan result file")
     .setInputFiles(path.resolve("../samples/generic.json"));
-  await page
-    .getByRole("button", { name: "Validate & import findings" })
-    .click();
+  const reimported = await submitImport(page);
+  expect(reimported.ok()).toBeTruthy();
   await expect(
     page.getByRole("row").filter({ hasText: "generic-json" }).first(),
   ).toContainText("2");
@@ -111,9 +120,11 @@ test("theme, mobile navigation, session and safe validation", async ({
     mimeType: "application/json",
     buffer: Buffer.from("<script>alert(1)</script>"),
   });
-  await page
-    .getByRole("button", { name: "Validate & import findings" })
-    .click();
+  const rejected = await submitImport(page);
+  expect(rejected.status()).toBe(422);
+  expect(await rejected.json()).toMatchObject({
+    detail: expect.stringContaining("Malformed import"),
+  });
   await expect(page.getByRole("alert")).toContainText("Malformed import");
   await page.getByRole("button", { name: "Open navigation" }).click();
   await page.getByRole("button", { name: "Sign out" }).click();
