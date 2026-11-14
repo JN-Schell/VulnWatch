@@ -244,7 +244,11 @@ function App() {
   const [mobile, setMobile] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  // Submission lock only. Background refresh must not use this flag: disabling
+  // the import button while load() runs lets a click pass actionability checks
+  // and then get dropped before dispatch.
   const [busy, setBusy] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -286,6 +290,7 @@ function App() {
     const expire = () => {
       loadGeneration.current += 1;
       setBusy(false);
+      setRefreshing(false);
       setUser(null);
       setCSRF("");
     };
@@ -309,7 +314,7 @@ function App() {
   const load = useCallback(async () => {
     if (!user) return;
     const generation = ++loadGeneration.current;
-    setBusy(true);
+    setRefreshing(true);
     try {
       const params = new URLSearchParams({
         q: query,
@@ -364,7 +369,7 @@ function App() {
       if (generation === loadGeneration.current)
         setError((failure as Error).message);
     } finally {
-      if (generation === loadGeneration.current) setBusy(false);
+      if (generation === loadGeneration.current) setRefreshing(false);
     }
   }, [
     user,
@@ -902,8 +907,15 @@ function App() {
               </p>
             </div>
             <div className="heading-actions">
-              <button className="secondary" onClick={load} disabled={busy}>
-                <RefreshCw size={15} className={busy ? "spin" : ""} />
+              <button
+                className="secondary"
+                onClick={load}
+                disabled={busy || refreshing}
+              >
+                <RefreshCw
+                  size={15}
+                  className={busy || refreshing ? "spin" : ""}
+                />
                 <span>Refresh</span>
               </button>
               {page === "Assets" && canWrite ? (
