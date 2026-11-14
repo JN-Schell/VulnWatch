@@ -12,6 +12,10 @@ All notable changes to VulnWatch are documented here. The format follows [Keep a
 - Public GitHub Project board with Backlog, Ready, In Progress, In Review, Testing, and Done columns, linked from the README.
 - Corrected repository and project-board URLs after the GitHub account rename to `JN-Schell`.
 
+### Fixed
+
+- Import submission no longer shares the background-refresh busy flag, so a data reload cannot disable the import button between a click's actionability check and dispatch. The malicious-import browser test waits for the import response before asserting rejection.
+
 ### Changed
 
 - Documentation now distinguishes engineering self-review from independent human approval.
