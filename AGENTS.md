@@ -228,7 +228,7 @@ The intended GitHub configuration is:
 
 - Default branch: `main`.
 - Pull request required before merging.
-- Required status checks: backend, browser, Compose smoke test, and CodeQL once established.
+- Required status checks: `backend`, `browser`, `compose`, `Analyze (python)`, `Analyze (javascript-typescript)`, and `CodeQL`. The two Analyze checks are the CodeQL workflow jobs. `CodeQL` is the GitHub code-scanning check. Those three names were observed succeeding on pull request #40 at `d779192` before they were required.
 - Required approvals: **0**, because this is a solo-maintainer repository with autonomous agent work. Self-review is documented; no independent approval is claimed.
 - Linear history required.
 - Force pushes and branch deletion on `main` disabled.
