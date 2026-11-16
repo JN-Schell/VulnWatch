@@ -6,6 +6,7 @@ All notable changes to VulnWatch are documented here. The format follows [Keep a
 
 ### Added
 
+- CodeQL analysis for Python and JavaScript/TypeScript, and weekly grouped Dependabot updates for uv, npm, and GitHub Actions.
 - Permanent engineering workflow in `AGENTS.md`.
 - Contribution guide, pull request template, issue templates, changelog policy, and Architecture Decision Records.
 - CI concurrency controls to cancel superseded runs.
