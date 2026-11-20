@@ -37,6 +37,7 @@
   --unknown: #89949f;
   --none: #64717d;
   --success: #91cda5;
+  --in-progress: #a8bafa;
   --shadow: 0 16px 70px #0005;
   font-size: 14px;
   font-synthesis: none;
@@ -55,12 +56,13 @@
   --accent: #47771c;
   --accent-text: #ffffff;
   --critical: #be3851;
-  --high: #b16b28;
-  --medium: #99791c;
-  --low: #2b8661;
+  --high: #9a5b1e;
+  --medium: #8f6f14;
+  --low: #2b7450;
   --unknown: #647484;
-  --none: #697785;
-  --success: #33885c;
+  --none: #63707d;
+  --success: #2f6f4d;
+  --in-progress: #3559b0;
   --shadow: 0 16px 70px #17304a18;
 }
 * {
@@ -887,7 +889,7 @@ tr:hover td {
 }
 .badge.in_progress,
 .badge.processing {
-  color: #a8bafa;
+  color: var(--in-progress);
   border-color: #a8bafa28;
   background: #a8bafa09;
 }

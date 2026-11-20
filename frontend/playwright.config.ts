@@ -9,6 +9,17 @@ export default defineConfig({
   workers: 1,
   retries: process.env.CI ? 1 : 0,
   reporter: [["list"], ["html", { open: "never" }]],
+  projects: [
+    {
+      name: "workflows",
+      testIgnore: /accessibility\.spec\.ts/,
+    },
+    {
+      name: "accessibility",
+      testMatch: /accessibility\.spec\.ts/,
+      retries: 0,
+    },
+  ],
   use: {
     baseURL: `http://127.0.0.1:${webPort}`,
     trace: "retain-on-failure",

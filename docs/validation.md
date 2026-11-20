@@ -1,6 +1,6 @@
 # Validation record
 
-Local validation performed **November 13, 2026**, on macOS with Python 3.11.18, Node 26.11.0, uv 0.13.8 and a dedicated PostgreSQL 16.16 UTF-8 instance. Hosted validation ran in GitHub Actions on the same date with Python 3.12 / Node 22 / PostgreSQL 16. Test credentials and databases were disposable, not production accounts. Browser workflow isolation for issue #38 was revalidated on **November 19, 2026**.
+Local validation performed **November 13, 2026**, on macOS with Python 3.11.18, Node 26.11.0, uv 0.13.8 and a dedicated PostgreSQL 16.16 UTF-8 instance. Hosted validation ran in GitHub Actions on the same date with Python 3.12 / Node 22 / PostgreSQL 16. Test credentials and databases were disposable, not production accounts. Browser workflow isolation for issue #38 and accessibility coverage for issue #33 were revalidated on **November 19, 2026**.
 
 Repository: <https://github.com/JN-Schell/VulnWatch>  
 Baseline commit: `9b36ee9`  
@@ -16,7 +16,7 @@ Governance merge commit: `b6afa38` (pull request #2)
 | PostgreSQL backend suite | **41 passed**, including advisory lock exclusivity, real optimistic concurrency, DB integrity, NVD failures, and workflow/import security |
 | SQLite backend suite | **40 passed, 1 skipped**; PostgreSQL-only advisory lock test is intentionally skipped |
 | Backend coverage on PostgreSQL | **90%** statement coverage; security, imports, models, and risk service 100% |
-| Playwright / real PostgreSQL API | **2 passed** in the recorded baseline run; import, deduplication, assignment, mitigation, verification, CSV download, mobile navigation, theme persistence, malicious input rejection, and logout. Issue #20's submit-timing flake was fixed by keeping background refresh off the import button's disabled state. Issue #38 gives each run a unique asset identifier and waits for the `201` asset-save response before asserting the dialog closed. Local revalidation: focused workflow **10 consecutive runs passed** with `--retries=0` and the disposable rate-limit table cleared between runs; full suite **2 passed** (`--retries=0`) |
+| Playwright / real PostgreSQL API | **5 passed** in the current suite; import, deduplication, assignment, mitigation, verification, CSV download, mobile navigation, theme persistence, malicious input rejection, and logout. Issue #20's submit-timing flake was fixed by keeping background refresh off the import button's disabled state. Issue #38 gives each run a unique asset identifier and waits for the `201` asset-save response before asserting the dialog closed. Issue #33 adds axe-core scans for the login screen, critical pages, finding/remediation dialogs, both themes, keyboard focus, and the chart summary. The accessibility Playwright project requires zero retries; the workflow project retains its existing one-retry policy. Local revalidation: focused workflow **10 consecutive runs passed** with `--retries=0` and the disposable rate-limit table cleared between runs; accessibility spec **9 passed across three sequential runs** with `--retries=0` and the disposable rate-limit table cleared between runs; full suite **5 passed** (`--retries=0`) |
 | Frontend production build | TypeScript checking and Vite production build passed |
 | Ruff / Prettier | Checks passed |
 | Locked production Python dependencies | `pip-audit` reported no known vulnerabilities at validation time |
@@ -34,7 +34,7 @@ The live NVD smoke test is not a claim that the full initial thirty-day synchron
 
 - **Docker is not installed on the implementation machine.** Container image builds and Compose startup were not executed locally. The hosted `compose` job built the images, started the stack, and passed its health checks; local container runtime behavior remains unverified.
 - Hosted CI validates the backend, browser, and Compose jobs. Tagged image publication has not been executed. No production deployment or production secret has been created.
-- The browser workflow's ten-run repeat check clears the disposable `rate_buckets` table between runs. The application still enforces its 300-request-per-minute API limit; the test does not bypass or disable it. A normal single CI run stays within the limit.
+- Browser repeat verification clears the disposable `rate_buckets` table between runs. The application still enforces its 300-request-per-minute API limit; the tests do not bypass or disable it. A normal single CI run stays within the limit.
 - No independent human code review or third-party penetration test has been performed. Merges use documented engineering self-review and required hosted checks; this is not represented as independent approval.
 - The installed Starlette emits a TestClient/httpx deprecation warning. Tests pass; migrate the test transport if future Starlette versions remove compatibility. It is not suppressed.
 - This is a tested functional small-team baseline, not a third-party penetration test or enterprise production certification. Review deployment hardening and roadmap items (MFA/SSO, audit export, evidence approval, streaming/scale limits) before real operational use.

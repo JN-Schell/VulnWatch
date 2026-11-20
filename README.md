@@ -153,6 +153,7 @@ If development ports are already in use, set `E2E_API_PORT=8001 E2E_WEB_PORT=517
 - [Threat model](docs/threat-model.md)
 - [Development roadmap](docs/roadmap.md)
 - [Validation record and known limitations](docs/validation.md)
+- [Accessibility coverage and manual review](docs/accessibility.md)
 
 ## Project governance
 
