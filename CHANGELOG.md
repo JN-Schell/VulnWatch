@@ -6,6 +6,7 @@ All notable changes to VulnWatch are documented here. The format follows [Keep a
 
 ### Added
 
+- Automated axe-core Playwright coverage for the login screen, critical pages, finding and remediation dialogs, keyboard focus, and both themes, with a hidden summary for the risk-trajectory chart and a zero-retry CI project.
 - CodeQL analysis for Python and JavaScript/TypeScript, and weekly grouped Dependabot updates for uv, npm, and GitHub Actions.
 - Permanent engineering workflow in `AGENTS.md`.
 - Contribution guide, pull request template, issue templates, changelog policy, and Architecture Decision Records.
@@ -17,6 +18,7 @@ All notable changes to VulnWatch are documented here. The format follows [Keep a
 
 - Import submission no longer shares the background-refresh busy flag, so a data reload cannot disable the import button between a click's actionability check and dispatch. The malicious-import browser test waits for the import response before asserting rejection.
 - The browser import workflow creates a unique asset per run and waits for the asset-save response before asserting the dialog closed, so Playwright retries and repeated runs cannot collide on stale test data or ambiguous findings.
+- Dialog focus now returns to the triggering control, the skip link focuses the main content target, and the light-theme medium badge meets WCAG AA text contrast.
 
 ### Changed
 

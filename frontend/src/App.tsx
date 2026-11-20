@@ -122,8 +122,15 @@ function Modal({
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const dialog = ref.current!;
+    const previous =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
     dialog.showModal();
-    return () => dialog.close();
+    return () => {
+      dialog.close();
+      if (previous?.isConnected) previous.focus();
+    };
   }, []);
   return (
     <dialog
@@ -170,12 +177,19 @@ function RiskChart({ trend }: { trend: Dashboard["trend"] }) {
   );
   if (points.length === 1)
     points.push(`680,${170 - (trend[0].risk / maximum) * 135}`);
+  const latest = trend[trend.length - 1];
+  const peak = Math.max(...trend.map((entry) => entry.risk));
   return (
     <div className="risk-chart">
+      <p id="risk-chart-summary" className="sr-only">
+        Aggregate custom risk from {date(trend[0].date)} to {date(latest.date)}.
+        Latest risk {latest.risk}. Peak risk {peak}.
+      </p>
       <svg
         viewBox="0 0 720 220"
         role="img"
         aria-label="Recorded aggregate custom risk over time"
+        aria-describedby="risk-chart-summary"
       >
         <defs>
           <linearGradient id="risk-fill" x1="0" y1="0" x2="0" y2="1">
@@ -869,7 +883,7 @@ function App() {
             <span className="avatar small">{user.name[0]}</span>
           </div>
         </header>
-        <main id="main" className="content">
+        <main id="main" className="content" tabIndex={-1}>
           <div className="page-heading">
             <div>
               <div className="eyebrow">
