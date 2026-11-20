@@ -16,6 +16,7 @@ All notable changes to VulnWatch are documented here. The format follows [Keep a
 ### Fixed
 
 - Import submission no longer shares the background-refresh busy flag, so a data reload cannot disable the import button between a click's actionability check and dispatch. The malicious-import browser test waits for the import response before asserting rejection.
+- The browser import workflow creates a unique asset per run and waits for the asset-save response before asserting the dialog closed, so Playwright retries and repeated runs cannot collide on stale test data or ambiguous findings.
 
 ### Changed
 

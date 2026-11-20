@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 
 const password = process.env.E2E_PASSWORD;
@@ -18,6 +19,17 @@ async function submitImport(page: Page) {
   return response;
 }
 
+async function saveAsset(page: Page) {
+  const response = page.waitForResponse((candidate) => {
+    if (candidate.request().method() !== "POST") return false;
+    return new URL(candidate.url()).pathname === "/api/assets";
+  });
+  await page.getByRole("button", { name: "Save asset" }).click();
+  const saved = await response;
+  expect(saved.status()).toBe(201);
+  await expect(page.getByRole("dialog")).not.toBeVisible();
+}
+
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
   await page.getByLabel("Email address").fill("admin@example.com");
@@ -31,35 +43,55 @@ test.beforeEach(async ({ page }) => {
 test("real import, deduplication, assignment and verified remediation", async ({
   page,
 }) => {
+  // Retries and repeated runs must not collide on the unique asset name or
+  // find each other's Log4j rows. The import payload follows the same name.
+  const assetName = `server-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const sample = JSON.parse(
+    readFileSync(path.resolve("../samples/generic.json"), "utf8"),
+  ) as { findings: Array<Record<string, unknown>> };
+  const importPayload = Buffer.from(
+    JSON.stringify({
+      ...sample,
+      findings: sample.findings.map((finding) => ({
+        ...finding,
+        asset: assetName,
+      })),
+    }),
+  );
+
   await page.getByRole("button", { name: "Assets", exact: true }).click();
   await page.getByRole("button", { name: "Add asset", exact: true }).click();
-  await page.getByLabel("Asset identifier").fill("server-01");
+  await page.getByLabel("Asset identifier").fill(assetName);
   await page.getByLabel("Owner", { exact: true }).fill("Security engineering");
-  await page.getByRole("button", { name: "Save asset" }).click();
-  await expect(page.getByRole("dialog")).not.toBeVisible();
+  await saveAsset(page);
   await page.getByRole("button", { name: "Imports", exact: true }).click();
-  await page
-    .getByLabel("Scan result file")
-    .setInputFiles(path.resolve("../samples/generic.json"));
+  await page.getByLabel("Scan result file").setInputFiles({
+    name: "generic.json",
+    mimeType: "application/json",
+    buffer: importPayload,
+  });
   const created = await submitImport(page);
   expect(created.ok()).toBeTruthy();
   await expect(page.getByRole("status")).toContainText("Import processed");
-  await page
-    .getByLabel("Scan result file")
-    .setInputFiles(path.resolve("../samples/generic.json"));
+  await page.getByLabel("Scan result file").setInputFiles({
+    name: "generic.json",
+    mimeType: "application/json",
+    buffer: importPayload,
+  });
   const reimported = await submitImport(page);
   expect(reimported.ok()).toBeTruthy();
   await expect(
     page.getByRole("row").filter({ hasText: "generic-json" }).first(),
   ).toContainText("2");
   await page.getByRole("button", { name: /^Vulnerabilities/ }).click();
+  await page.getByLabel("Asset filter").selectOption({ label: assetName });
   await page.getByLabel("Search findings").fill("Log4j");
-  await page
-    .getByRole("button", {
-      name: "Apache Log4j remote code execution",
-      exact: true,
-    })
-    .click();
+  const log4j = page.getByRole("button", {
+    name: "Apache Log4j remote code execution",
+    exact: true,
+  });
+  await expect(log4j).toHaveCount(1);
+  await log4j.click();
   await expect(page.getByRole("dialog")).toContainText("Observations");
   const dialog = page.getByRole("dialog");
   await dialog
