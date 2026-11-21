@@ -14,3 +14,4 @@ test-results/
 .coverage
 htmlcov/
 *.tsbuildinfo
+.commandcode/
