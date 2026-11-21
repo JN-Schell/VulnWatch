@@ -29,9 +29,9 @@ cd frontend
 E2E_PASSWORD='<test-only password>' npx playwright test --retries=0
 ```
 
-The required CI `browser` job runs the complete Playwright suite. The `accessibility` project pins retries to **0**; the workflow project keeps the repository's existing one-retry policy for browser infrastructure failures. The accessibility spec passed **9/9** across three sequential local runs with `--retries=0`, and the full suite passed **5/5** with `--retries=0`.
+The required CI `browser` job runs the complete Playwright suite. The `accessibility` project pins retries to **0**; the workflow project keeps the repository's existing one-retry policy for browser infrastructure failures. The accessibility spec passed **9/9** across three sequential local runs with `--retries=0`, and the full suite passed **5/5** on three consecutive fresh-database runs with `--retries=0`.
 
-Rapid repetitions can reach the application's 300-request-per-minute API limit within a minute. Repeated verification therefore uses separate runs and clears only the disposable `rate_buckets` table between them; the limiter is never disabled in application code.
+The browser suite is designed to stay within the application's 300-request-per-minute API limit. Navigation refreshes dashboard and findings only; reference data is loaded once per session and refreshed on explicit refresh or mutation. A shared Playwright fixture fails any test that receives a `429`, so stale pages and later timeouts are reported as a request-budget failure. The three consecutive full-suite runs observed a maximum rate bucket of **128/300**. The limiter is never disabled, raised, or reset by the tests.
 
 ## Manual review
 

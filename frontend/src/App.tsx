@@ -294,6 +294,7 @@ function App() {
   const [adapter, setAdapter] = useState("generic-json");
   const fileInput = useRef<HTMLInputElement>(null);
   const loadGeneration = useRef(0);
+  const loadedReferenceData = useRef(false);
   const canWrite = user?.role !== "viewer";
 
   useEffect(() => {
@@ -303,6 +304,7 @@ function App() {
   useEffect(() => {
     const expire = () => {
       loadGeneration.current += 1;
+      loadedReferenceData.current = false;
       setBusy(false);
       setRefreshing(false);
       setUser(null);
@@ -325,79 +327,94 @@ function App() {
     }
   }, [notice]);
 
-  const load = useCallback(async () => {
-    if (!user) return;
-    const generation = ++loadGeneration.current;
-    setRefreshing(true);
-    try {
-      const params = new URLSearchParams({
-        q: query,
-        page: String(listPage),
-        page_size: "15",
-      });
-      if (status) params.set("status", status);
-      else if (page === "Remediation") params.set("status", "in_progress");
-      if (severity) params.set("severity_level", severity);
-      if (assetFilter) params.set("asset_id", assetFilter);
-      if (overdue) params.set("overdue", "true");
-      const [
-        summary,
-        inventory,
-        members,
-        records,
-        jobs,
-        syncState,
-        alerts,
-        intelligence,
-        currentPolicy,
-      ] = await Promise.all([
-        api<Dashboard>("/dashboard"),
-        api<Asset[]>("/assets"),
-        api<User[]>("/users"),
-        api<{ items: Finding[]; total: number }>(`/findings?${params}`),
-        api<ImportJob[]>("/imports"),
-        api<Sync>("/sync"),
-        api<Notification[]>("/notifications"),
-        api<{ items: CVE[]; total: number }>(
-          `/cves?q=${encodeURIComponent(page === "CVE intelligence" ? query : "")}&page=${cvePage}`,
-        ),
-        api<Policy>("/policy"),
-      ]);
-      if (generation !== loadGeneration.current) return;
-      setDashboard(summary);
-      setAssets(inventory);
-      setUsers(members);
-      setFindings(records.items);
-      setTotal(records.total);
-      setImports(jobs);
-      setSync(syncState);
-      setNotifications(alerts);
-      setCves(intelligence.items);
-      setCveTotal(intelligence.total);
-      setPolicy(currentPolicy);
-      if (page === "Settings" && user.role === "admin") {
-        const events = await api<Audit[]>("/audit");
-        if (generation === loadGeneration.current) setAudit(events);
+  const load = useCallback(
+    async (full = false) => {
+      if (!user) return;
+      const generation = ++loadGeneration.current;
+      setRefreshing(true);
+      try {
+        const params = new URLSearchParams({
+          q: query,
+          page: String(listPage),
+          page_size: "15",
+        });
+        if (status) params.set("status", status);
+        else if (page === "Remediation") params.set("status", "in_progress");
+        if (severity) params.set("severity_level", severity);
+        if (assetFilter) params.set("asset_id", assetFilter);
+        if (overdue) params.set("overdue", "true");
+        const referenceRequest =
+          full || !loadedReferenceData.current
+            ? Promise.all([
+                api<Asset[]>("/assets"),
+                api<User[]>("/users"),
+                api<ImportJob[]>("/imports"),
+                api<Sync>("/sync"),
+                api<Notification[]>("/notifications"),
+                api<Policy>("/policy"),
+              ])
+            : Promise.resolve(null);
+        const intelligenceRequest =
+          page === "CVE intelligence"
+            ? api<{ items: CVE[]; total: number }>(
+                `/cves?q=${encodeURIComponent(query)}&page=${cvePage}`,
+              )
+            : Promise.resolve(null);
+        const auditRequest =
+          page === "Settings" && user.role === "admin"
+            ? api<Audit[]>("/audit")
+            : Promise.resolve(null);
+        const [[summary, records], reference, intelligence, events] =
+          await Promise.all([
+            Promise.all([
+              api<Dashboard>("/dashboard"),
+              api<{ items: Finding[]; total: number }>(`/findings?${params}`),
+            ]),
+            referenceRequest,
+            intelligenceRequest,
+            auditRequest,
+          ]);
+        if (generation !== loadGeneration.current) return;
+        setDashboard(summary);
+        setFindings(records.items);
+        setTotal(records.total);
+        if (reference) {
+          const [inventory, members, jobs, syncState, alerts, currentPolicy] =
+            reference;
+          setAssets(inventory);
+          setUsers(members);
+          setImports(jobs);
+          setSync(syncState);
+          setNotifications(alerts);
+          setPolicy(currentPolicy);
+          loadedReferenceData.current = true;
+        }
+        if (intelligence) {
+          setCves(intelligence.items);
+          setCveTotal(intelligence.total);
+        }
+        if (events) setAudit(events);
+      } catch (failure) {
+        if (generation === loadGeneration.current)
+          setError((failure as Error).message);
+      } finally {
+        if (generation === loadGeneration.current) setRefreshing(false);
       }
-    } catch (failure) {
-      if (generation === loadGeneration.current)
-        setError((failure as Error).message);
-    } finally {
-      if (generation === loadGeneration.current) setRefreshing(false);
-    }
-  }, [
-    user,
-    page,
-    query,
-    status,
-    severity,
-    assetFilter,
-    overdue,
-    listPage,
-    cvePage,
-  ]);
+    },
+    [
+      user,
+      page,
+      query,
+      status,
+      severity,
+      assetFilter,
+      overdue,
+      listPage,
+      cvePage,
+    ],
+  );
   useEffect(() => {
-    const timer = setTimeout(load, 200);
+    const timer = setTimeout(() => load(false), 200);
     return () => clearTimeout(timer);
   }, [load]);
 
@@ -411,7 +428,7 @@ function App() {
     try {
       await work();
       setNotice(success);
-      if (refresh) await load();
+      if (refresh) await load(true);
     } catch (failure) {
       setError((failure as Error).message);
     } finally {
@@ -804,6 +821,7 @@ function App() {
                   async () => {
                     await api("/auth/logout", { method: "POST" });
                     loadGeneration.current += 1;
+                    loadedReferenceData.current = false;
                     setUser(null);
                     setCSRF("");
                     setDetail(null);
@@ -923,7 +941,7 @@ function App() {
             <div className="heading-actions">
               <button
                 className="secondary"
-                onClick={load}
+                onClick={() => load(true)}
                 disabled={busy || refreshing}
               >
                 <RefreshCw

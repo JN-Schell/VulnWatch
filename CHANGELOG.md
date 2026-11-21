@@ -18,10 +18,12 @@ All notable changes to VulnWatch are documented here. The format follows [Keep a
 
 - Import submission no longer shares the background-refresh busy flag, so a data reload cannot disable the import button between a click's actionability check and dispatch. The malicious-import browser test waits for the import response before asserting rejection.
 - The browser import workflow creates a unique asset per run and waits for the asset-save response before asserting the dialog closed, so Playwright retries and repeated runs cannot collide on stale test data or ambiguous findings.
+- Browser tests now fail explicitly on any `429` response instead of allowing stale UI state and later timeouts.
 - Dialog focus now returns to the triggering control, the skip link focuses the main content target, and the light-theme medium badge meets WCAG AA text contrast.
 
 ### Changed
 
+- Navigation now refreshes the dashboard and findings only; reference data loads on first use, explicit refresh, or mutation, reducing API request amplification while preserving the 300-request-per-minute limiter.
 - Documentation now distinguishes engineering self-review from independent human approval.
 - Validation record reconciled with the hosted CI run, merged governance pull request, branch protection, repository security settings, and current test counts.
 
