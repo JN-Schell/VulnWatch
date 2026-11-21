@@ -43,6 +43,41 @@ def test_trivy_mapping():
     assert openssl.cvss_score == 3.7
 
 
+def test_trivy_cvss_prefers_highest_version_across_sources():
+    payload = {
+        "SchemaVersion": 2,
+        "Results": [
+            {
+                "Vulnerabilities": [
+                    {
+                        "VulnerabilityID": "CVE-2024-1111",
+                        "PkgName": "pkg",
+                        "CVSS": {
+                            "mixed": {"V40Score": 4.4, "V3Score": 9.9, "V2Score": 5.0},
+                            "v3only": {"V3Score": 8.8},
+                        },
+                    },
+                    {
+                        "VulnerabilityID": "CVE-2024-2222",
+                        "PkgName": "pkg",
+                        "CVSS": {"v2only": {"V2Score": 5.0}},
+                    },
+                    {
+                        "VulnerabilityID": "CVE-2024-3333",
+                        "PkgName": "pkg",
+                        "CVSS": {"bad": {"V3Score": 42}},
+                    },
+                ]
+            }
+        ],
+    }
+    rows = parse_import("trivy-json", json.dumps(payload).encode(), "t.json", "server-01")
+    by_cve = {row.cve_id: row.cvss_score for row in rows}
+    assert by_cve["CVE-2024-1111"] == 4.4
+    assert by_cve["CVE-2024-2222"] == 5.0
+    assert by_cve["CVE-2024-3333"] is None
+
+
 def test_trivy_duplicate_cve_keeps_distinct_locators():
     rows = parse_import("trivy-json", sample("trivy.json"), "trivy.json", "payments-api")
     same_cve = [row for row in rows if row.cve_id == "CVE-2024-21538"]

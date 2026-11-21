@@ -96,7 +96,7 @@ class TrivyJSON:
                     raise ImportError("Trivy findings require VulnerabilityID and PkgName")
                 cve_id, external_id = _identity("trivy", vendor_id)
                 cvss = _optional_dict(entry.get("CVSS"), "CVSS")
-                scores = [value for value in cvss.values() if isinstance(value, dict)]
+                sources = [value for value in cvss.values() if isinstance(value, dict)]
                 rows.append(
                     {
                         "asset": target,
@@ -106,9 +106,9 @@ class TrivyJSON:
                         "description": _text(entry.get("Description"), 10000),
                         "cvss_score": _score(
                             *(
-                                value.get(field)
-                                for value in scores
+                                source.get(field)
                                 for field in ("V40Score", "V3Score", "V2Score")
+                                for source in sources
                             )
                         ),
                         "locator": _locator(package, _identifier(entry.get("InstalledVersion"))),
