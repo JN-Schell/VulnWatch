@@ -46,6 +46,46 @@ server-01,Legacy TLS,,my-scanner:tls-old,Review protocol policy,5.3,tcp/443,my-s
 
 `asset` and `title` headers are required; identity requirements still apply per row. Only documented field names are accepted. Empty optional cells use defaults/null; textual `null` is not JSON null. Standard CSV quoting applies to commas/newlines. Use the same stable locator across scanners if observations should deduplicate.
 
+## Vendor adapters
+
+Vendor adapters accept a locally produced export file. VulnWatch never calls a scanner API, needs no vendor SDK, and never runs the scanner. Export the report with the vendor's own tooling, then upload the file.
+
+Unlike the generic adapters, vendor reports describe scanned artifacts, not VulnWatch inventory. They therefore require an explicit target asset:
+
+```sh
+curl -b cookies.txt -H 'Origin: http://localhost:8080' -H "X-CSRF-Token: $CSRF" \
+  -F 'file=@trivy.json' \
+  'http://localhost:8080/api/imports?adapter=trivy-json&asset=payments-api'
+```
+
+`asset` must name an existing asset. The importer never derives an asset name from a container image tag, repository path, or project label, because doing so would silently attribute findings to the wrong inventory. `GET /api/imports/adapters` reports `requires_asset` for each contract.
+
+Vendor identifiers map to canonical identity as follows. A CVE identifier becomes the shared vulnerability key, so the same CVE observed by Trivy, Grype, or Dependency-Check updates one finding when the asset and locator also match. A vendor advisory without a CVE is stored under a namespace-qualified external key (`trivy:`, `grype:`, `dependency-check:`) or under `ghsa:` when the identifier is a GHSA ID.
+
+| Adapter | Extension | Schema | Target locator | CVSS source |
+| --- | --- | --- | --- | --- |
+| `trivy-json` | `.json` | `SchemaVersion` 2 | `pkg:<PkgName>@<InstalledVersion>` | First finite `CVSS.*.V40Score`, then `V3Score`, then `V2Score` |
+| `grype-json` | `.json` | Grype JSON document | `pkg:<artifact.name>@<artifact.version>` | First finite `vulnerability.cvss[].metrics.baseScore` |
+| `dependency-check-json` | `.json` | `reportSchema` 1.1 | `pkg:<dependency.fileName>` | `cvssv4.baseScore`, then `cvssv3.baseScore`, then `cvssv2.score` |
+
+Scores are copied exactly as exported and labeled `import`; they are never recomputed and never presented as VulnWatch's custom priority. Severity labels from the vendor are not used. Missing, non-numeric, non-finite, or out-of-range scores remain null.
+
+### Trivy JSON (`trivy-json`)
+
+Produced by `trivy image -f json -o trivy.json <image>`. Every entry in every `Results[].Vulnerabilities[]` array is imported, including OS packages and language packages. `Results[].Vulnerabilities` may be absent. `SchemaVersion` must be the number `2`. Container `ArtifactName` and `Metadata` are ignored for identity; the explicit `asset` query parameter is authoritative.
+
+### Grype JSON (`grype-json`)
+
+Produced by `grype <target> -o json`. Every entry in `matches[]` is imported. `matches` must be an array; `vulnerability.id` and `artifact.name` are required. `artifact.version` is optional and only affects the locator. `source.target` is ignored for identity.
+
+### OWASP Dependency-Check JSON (`dependency-check-json`)
+
+Produced by `dependency-check --format JSON --out dependency-check.json`. `reportSchema` must be a string. Every entry in `dependencies[].vulnerabilities[]` is imported; dependencies without vulnerabilities are skipped. `vulnerabilities[].name` is required and is normally a CVE identifier. `projectInfo.name` is ignored for identity.
+
+### Fixture provenance and licensing
+
+The files in `samples/` are synthetic. They reproduce the field structure of each tool's documented JSON output but contain invented package versions, descriptions explicitly marked as synthetic, and zeroed hashes. No vendor export, NVD record, or third-party advisory text is redistributed, so no vendor license or redistribution clause applies to the fixtures. Real reports may contain data you are not permitted to upload; treat exported files as confidential.
+
 ## Identity and re-observation
 
 Fingerprint = SHA-256(JSON array of canonical asset name, canonical vulnerability key, locator). The scanner source is deliberately excluded. Different assets or locators create distinct findings. Reimport increments observation count and last-seen; it does not remove assignments, notes, first-seen, or history. A verified finding is reopened with a fresh deadline and retained original first-seen. Accepted risk stays accepted until explicitly reopened, while observations remain visible.
@@ -54,10 +94,11 @@ No scan disappearance automatically closes a finding. Verification requires an a
 
 ## Adding an adapter
 
-1. Implement the `Adapter` protocol in `backend/app/adapters`: an allowlisted extension and `parse(text) -> list[dict]`.
+1. Implement the `Adapter` protocol in `backend/app/adapters`: an allowlisted `extension`, `schema_version`, `documentation` anchor, `requires_asset` flag and `parse(text, asset) -> list[dict]`. Keep shared JSON loading and row validation in `backend/app/adapters/core.py`.
 2. Normalize vendor fields into `ImportRow`, not database models. Namespace non-CVE scanner keys. Never run uploaded programs or follow network targets embedded in files.
-3. Register the adapter in `ADAPTERS`. All adapters inherit byte/row limits and strict row validation.
-4. Add parser fixtures, malformed/malicious payload tests, duplicate identity tests and a documented schema/version.
-5. Expose the adapter in the frontend selector. The available contracts are also listed at `/api/imports/adapters`.
+3. Set `requires_asset` when the export describes an artifact rather than an inventory asset; never guess the asset from vendor metadata.
+4. Register the adapter in `ADAPTERS`. All adapters inherit byte/row limits, duplicate-key rejection, non-finite number rejection and strict row validation.
+5. Add parser fixtures, malformed/malicious payload tests, cross-adapter deduplication tests, and a documented schema/version.
+6. Expose the adapter in the frontend selector. The available contracts are also listed at `/api/imports/adapters`.
 
-Third-party scanner licenses and export semantics must be reviewed before shipping a vendor-specific adapter.
+Third-party scanner export semantics must be reviewed against the vendor's published format before shipping a vendor-specific adapter, and fixtures must be synthetic or licensed for redistribution.

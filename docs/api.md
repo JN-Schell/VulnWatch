@@ -25,9 +25,9 @@ Use a private password entry mechanism in real scripts; the illustrative literal
 | GET / POST `/assets` | read / write | Inventory / asset creation |
 | PUT `/assets/{id}` | write | Change category, exposure, owner and criticality; reassess risk |
 | GET `/assets/{id}/report` | read | Asset-scoped metrics/history |
-| GET `/imports/adapters` | read | Allowlisted adapter contracts |
+| GET `/imports/adapters` | read | Allowlisted adapter contracts, including schema version and whether a target asset is required |
 | GET `/imports` | read | Last 100 import summaries |
-| POST `/imports?adapter=generic-json` | write | Multipart `file`; returns job, created and duplicate counts |
+| POST `/imports?adapter=generic-json` | write | Multipart `file`; returns job, created and duplicate counts. Vendor adapters also require `asset=<existing asset name>` |
 | GET `/findings` | read | Search and pagination |
 | GET `/findings/{id}` | read | Details, status history, activities, risk snapshots |
 | PATCH `/findings/{id}` | write | Revision-checked workflow update |

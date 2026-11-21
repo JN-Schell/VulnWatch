@@ -135,6 +135,43 @@ test("real import, deduplication, assignment and verified remediation", async ({
   );
 });
 
+test("vendor adapters require and apply the selected target asset", async ({
+  page,
+}) => {
+  const assetName = `trivy-target-${Date.now()}`;
+  await page.getByRole("button", { name: "Assets", exact: true }).click();
+  await page.getByRole("button", { name: "Add asset", exact: true }).click();
+  await page.getByLabel("Asset identifier").fill(assetName);
+  await saveAsset(page);
+
+  await page.getByRole("button", { name: "Imports", exact: true }).click();
+  await page.getByLabel("Import adapter").selectOption("trivy-json");
+  await expect(page.getByLabel("Target asset")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Validate & import findings" }),
+  ).toBeDisabled();
+
+  await page.getByLabel("Scan result file").setInputFiles({
+    name: "trivy.json",
+    mimeType: "application/json",
+    buffer: readFileSync(path.resolve("../samples/trivy.json")),
+  });
+  await expect(
+    page.getByRole("button", { name: "Validate & import findings" }),
+  ).toBeDisabled();
+
+  await page.getByLabel("Target asset").selectOption(assetName);
+  const imported = await submitImport(page);
+  expect(imported.ok()).toBeTruthy();
+  // The fixture observes CVE-2024-21538 on cross-spawn@7.0.3 in two Trivy
+  // targets, so one row deduplicates within the batch.
+  expect(await imported.json()).toMatchObject({ created: 3, duplicates: 1 });
+
+  await page.getByRole("button", { name: /^Vulnerabilities/ }).click();
+  await page.getByLabel("Asset filter").selectOption({ label: assetName });
+  await expect(page.getByText("CVE-2024-9143")).toBeVisible();
+});
+
 test("theme, mobile navigation, session and safe validation", async ({
   page,
 }) => {

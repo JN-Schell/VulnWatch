@@ -45,6 +45,7 @@ import {
 } from "lucide-react";
 import { api, date, setCSRF } from "./api";
 import type {
+  AdapterContract,
   Asset,
   Audit,
   CVE,
@@ -87,6 +88,18 @@ const transitions: Record<string, string[]> = {
 };
 const titleCase = (value: string) =>
   value.replaceAll("_", " ").replace(/^./, (text) => text.toUpperCase());
+const contractLabel = (contract: AdapterContract) => {
+  const names: Record<string, string> = {
+    "generic-json": "Generic JSON",
+    "generic-csv": "Generic CSV",
+    "trivy-json": "Trivy JSON",
+    "grype-json": "Grype JSON",
+    "dependency-check-json": "OWASP Dependency-Check JSON",
+  };
+  const name = names[contract.id] ?? contract.id;
+  const target = contract.requires_asset ? " · needs asset" : "";
+  return `${name} · schema ${contract.schema_version}${target}`;
+};
 
 function Badge({ value }: { value: string }) {
   return (
@@ -292,10 +305,19 @@ function App() {
   );
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [adapter, setAdapter] = useState("generic-json");
+  const [adapterContracts, setAdapterContracts] = useState<AdapterContract[]>(
+    [],
+  );
+  const [importAsset, setImportAsset] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
   const loadGeneration = useRef(0);
   const loadedReferenceData = useRef(false);
   const canWrite = user?.role !== "viewer";
+  const selectedContract = adapterContracts.find(
+    (contract) => contract.id === adapter,
+  );
+  const needsImportAsset = selectedContract?.requires_asset ?? false;
+  const selectedExtension = selectedContract?.extension ?? ".json";
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -352,6 +374,7 @@ function App() {
                 api<Sync>("/sync"),
                 api<Notification[]>("/notifications"),
                 api<Policy>("/policy"),
+                api<AdapterContract[]>("/imports/adapters"),
               ])
             : Promise.resolve(null);
         const intelligenceRequest =
@@ -379,14 +402,22 @@ function App() {
         setFindings(records.items);
         setTotal(records.total);
         if (reference) {
-          const [inventory, members, jobs, syncState, alerts, currentPolicy] =
-            reference;
+          const [
+            inventory,
+            members,
+            jobs,
+            syncState,
+            alerts,
+            currentPolicy,
+            contracts,
+          ] = reference;
           setAssets(inventory);
           setUsers(members);
           setImports(jobs);
           setSync(syncState);
           setNotifications(alerts);
           setPolicy(currentPolicy);
+          setAdapterContracts(contracts);
           loadedReferenceData.current = true;
         }
         if (intelligence) {
@@ -1393,13 +1424,17 @@ function App() {
                     onSubmit={(event) => {
                       event.preventDefault();
                       if (!uploadFile) return;
+                      if (needsImportAsset && !importAsset) return;
                       const form = new FormData();
                       form.append("file", uploadFile);
+                      const target = needsImportAsset
+                        ? `&asset=${encodeURIComponent(importAsset)}`
+                        : "";
                       action(async () => {
                         const result = await api<{
                           created: number;
                           duplicates: number;
-                        }>(`/imports?adapter=${adapter}`, {
+                        }>(`/imports?adapter=${adapter}${target}`, {
                           method: "POST",
                           body: form,
                         });
@@ -1415,16 +1450,38 @@ function App() {
                       Import adapter
                       <select
                         value={adapter}
-                        onChange={(event) => setAdapter(event.target.value)}
+                        onChange={(event) => {
+                          setAdapter(event.target.value);
+                          setUploadFile(null);
+                          if (fileInput.current) fileInput.current.value = "";
+                        }}
                       >
-                        <option value="generic-json">
-                          Generic JSON · schema 1.0
-                        </option>
-                        <option value="generic-csv">
-                          Generic CSV · schema 1.0
-                        </option>
+                        {adapterContracts.map((contract) => (
+                          <option key={contract.id} value={contract.id}>
+                            {contractLabel(contract)}
+                          </option>
+                        ))}
                       </select>
                     </label>
+                    {needsImportAsset && (
+                      <label>
+                        Target asset
+                        <select
+                          value={importAsset}
+                          required
+                          onChange={(event) =>
+                            setImportAsset(event.target.value)
+                          }
+                        >
+                          <option value="">Select an existing asset</option>
+                          {assets.map((asset) => (
+                            <option key={asset.id} value={asset.name}>
+                              {asset.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
                     <label className="dropzone">
                       <FileUp size={30} />
                       <strong>
@@ -1433,14 +1490,14 @@ function App() {
                           : "Choose a scan result file"}
                       </strong>
                       <span>
-                        UTF-8 {adapter === "generic-json" ? "JSON" : "CSV"} ·
-                        Maximum 2 MiB · 1,000 findings
+                        UTF-8 {selectedExtension.toUpperCase()} · Maximum 2 MiB
+                        · 1,000 findings
                       </span>
                       <input
                         ref={fileInput}
                         aria-label="Scan result file"
                         type="file"
-                        accept={adapter === "generic-json" ? ".json" : ".csv"}
+                        accept={selectedExtension}
                         disabled={!canWrite}
                         onChange={(event) =>
                           setUploadFile(event.target.files?.[0] || null)
@@ -1449,7 +1506,12 @@ function App() {
                     </label>
                     <button
                       className="primary full"
-                      disabled={!uploadFile || busy || !canWrite}
+                      disabled={
+                        !uploadFile ||
+                        busy ||
+                        !canWrite ||
+                        (needsImportAsset && !importAsset)
+                      }
                     >
                       <FileUp size={16} />
                       Validate & import findings
@@ -1462,7 +1524,8 @@ function App() {
                   <p>
                     Assets must exist before import. CVE IDs deduplicate across
                     scanner sources; non-CVE findings require a
-                    namespace-qualified external ID.
+                    namespace-qualified external ID. Vendor reports describe
+                    scanned artifacts, so choose the target asset explicitly.
                   </p>
                   <pre>{`{\n  "schema_version": "1.0",\n  "findings": [{\n    "asset": "server-01",\n    "cve_id": "CVE-2021-44228",\n    "title": "Log4Shell",\n    "cvss_score": 10,\n    "locator": "tcp/443",\n    "source": "your-scanner"\n  }]\n}`}</pre>
                   <span className="safe-note">

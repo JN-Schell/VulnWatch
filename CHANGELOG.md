@@ -6,6 +6,7 @@ All notable changes to VulnWatch are documented here. The format follows [Keep a
 
 ### Added
 
+- Trivy, Grype, and OWASP Dependency-Check JSON import adapters with synthetic fixtures in `samples/`, documented field mappings, namespace-qualified non-CVE identities, and a required explicit target asset so vendor artifact metadata never guesses VulnWatch inventory. `/imports/adapters` now reports each contract's schema version, documentation anchor, and asset requirement.
 - Automated axe-core Playwright coverage for the login screen, critical pages, finding and remediation dialogs, keyboard focus, and both themes, with a hidden summary for the risk-trajectory chart and a zero-retry CI project.
 - CodeQL analysis for Python and JavaScript/TypeScript, and weekly grouped Dependabot updates for uv, npm, and GitHub Actions.
 - Permanent engineering workflow in `AGENTS.md`.
