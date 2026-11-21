@@ -1,0 +1,86 @@
+{
+  "SchemaVersion": 2,
+  "CreatedAt": "2026-11-01T09:12:44.211Z",
+  "ArtifactName": "registry.example.internal/payments-api:1.4.2",
+  "ArtifactType": "container_image",
+  "Metadata": {
+    "OS": { "Family": "alpine", "Name": "3.20.3" },
+    "ImageID": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "RepoTags": ["registry.example.internal/payments-api:1.4.2"]
+  },
+  "Results": [
+    {
+      "Target": "registry.example.internal/payments-api:1.4.2 (alpine 3.20.3)",
+      "Class": "os-pkgs",
+      "Type": "alpine",
+      "Vulnerabilities": [
+        {
+          "VulnerabilityID": "CVE-2024-9143",
+          "PkgID": "libcrypto3@3.3.2-r0",
+          "PkgName": "libcrypto3",
+          "InstalledVersion": "3.3.2-r0",
+          "FixedVersion": "3.3.2-r1",
+          "Status": "fixed",
+          "Title": "openssl: Low-level invalid GF(2^m) parameters lead to OOB memory access",
+          "Description": "Synthetic fixture text. In a real report Trivy copies the advisory description here; VulnWatch treats it as untrusted plain text.",
+          "Severity": "LOW",
+          "CweIDs": ["CWE-787"],
+          "CVSS": {
+            "redhat": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:L",
+              "V3Score": 3.7
+            }
+          }
+        },
+        {
+          "VulnerabilityID": "CVE-2024-21538",
+          "PkgID": "cross-spawn@7.0.3",
+          "PkgName": "cross-spawn",
+          "InstalledVersion": "7.0.3",
+          "FixedVersion": "7.0.5",
+          "Status": "fixed",
+          "Title": "cross-spawn: regular expression denial of service",
+          "Description": "Synthetic fixture text describing a dependency finding.",
+          "Severity": "HIGH",
+          "CVSS": {
+            "nvd": {
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+              "V3Score": 7.5
+            }
+          }
+        },
+        {
+          "VulnerabilityID": "GHSA-3xgq-45jj-v275",
+          "PkgID": "cross-spawn@7.0.3",
+          "PkgName": "cross-spawn",
+          "InstalledVersion": "7.0.3",
+          "Status": "affected",
+          "Title": "cross-spawn: ReDoS advisory without a CVE identifier",
+          "Description": "Synthetic fixture text for a non-CVE advisory.",
+          "Severity": "MEDIUM"
+        }
+      ]
+    },
+    {
+      "Target": "app/package-lock.json",
+      "Class": "lang-pkgs",
+      "Type": "npm",
+      "Vulnerabilities": [
+        {
+          "VulnerabilityID": "CVE-2024-21538",
+          "PkgID": "cross-spawn@7.0.3",
+          "PkgName": "cross-spawn",
+          "InstalledVersion": "7.0.3",
+          "FixedVersion": "7.0.5",
+          "Status": "fixed",
+          "Title": "cross-spawn: regular expression denial of service",
+          "Description": "Synthetic fixture text. The same CVE observed through a second Trivy target.",
+          "Severity": "HIGH",
+          "CVSS": {
+            "nvd": { "V3Score": 7.5 }
+          }
+        }
+      ]
+    }
+  ]
+}

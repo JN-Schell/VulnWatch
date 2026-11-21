@@ -12,7 +12,7 @@ A defensive vulnerability management application for a small IT security team. I
 ## What works
 
 - **Inventory:** assets, categories, business criticality, internet exposure, finding search/filtering/pagination and retained observation history.
-- **Imports:** documented JSON/CSV adapters, strict validation, atomic batches, cross-scanner CVE deduplication, repeat observations, and reopening after verification.
+- **Imports:** documented generic JSON/CSV adapters plus Trivy, Grype, and OWASP Dependency-Check JSON adapters over their published export formats, strict validation, atomic batches, cross-scanner CVE deduplication, repeat observations, and reopening after verification.
 - **Intelligence:** actual NVD API 2.0 transport, CVSS v4/v3/v2 ingestion, CPE/version ranges, safe references, retries, pagination, persisted synchronization watermark and scheduled worker.
 - **Risk:** configurable severity thresholds, separate custom priority, unknown-score baseline, immutable assessment snapshots, aging and recorded risk trends.
 - **Remediation:** assignments, UTC deadlines, notes, mitigation/verification evidence, server-enforced transitions, optimistic concurrency and overdue detection.
@@ -46,7 +46,7 @@ Migrations and role/policy bootstrap run once in the `migrate` service before AP
 ### First real workflow
 
 1. Add an asset named `server-01` in **Assets**. Set its owner, criticality and exposure.
-2. Import `samples/generic.json` or `samples/generic.csv` using the corresponding adapter. These are examples, not evidence of an actual scan.
+2. Import `samples/generic.json` or `samples/generic.csv` using the corresponding adapter. These are examples, not evidence of an actual scan. `samples/trivy.json`, `samples/grype.json`, and `samples/dependency-check.json` are synthetic exports in each vendor's real JSON structure; select the matching adapter and the `server-01` target asset.
 3. Reimport the same file: the two findings are observed again, not duplicated.
 4. Open a finding, assign it, add a UTC deadline, and move it to **In progress**.
 5. Document mitigation evidence to move it to **Mitigated**; document verification evidence to move it to **Verified**.

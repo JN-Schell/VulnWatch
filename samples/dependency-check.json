@@ -1,0 +1,118 @@
+{
+  "reportSchema": "1.1",
+  "scanInfo": {
+    "engineVersion": "11.1.0",
+    "dataSource": [
+      { "name": "NVD CVE Checked", "timestamp": "2026-10-31T04:00:00" },
+      { "name": "NVD CVE Modified", "timestamp": "2026-10-31T04:00:00" }
+    ]
+  },
+  "projectInfo": {
+    "name": "order-service",
+    "reportDate": "2026-11-01T10:03:12.448Z",
+    "credits": {
+      "NVD": "This product uses the NVD API but is not endorsed or certified by the NVD."
+    }
+  },
+  "dependencies": [
+    {
+      "isVirtual": false,
+      "fileName": "log4j-core-2.14.1.jar",
+      "filePath": "/build/libs/log4j-core-2.14.1.jar",
+      "md5": "00000000000000000000000000000000",
+      "sha1": "0000000000000000000000000000000000000000",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "description": "Synthetic fixture metadata for an Apache Log4j jar.",
+      "license": "Apache-2.0",
+      "packages": [
+        { "id": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1", "confidence": "HIGHEST" }
+      ],
+      "vulnerabilities": [
+        {
+          "source": "NVD",
+          "name": "CVE-2021-44228",
+          "severity": "CRITICAL",
+          "cvssv3": {
+            "baseScore": 10.0,
+            "attackVector": "NETWORK",
+            "attackComplexity": "LOW",
+            "privilegesRequired": "NONE",
+            "userInteraction": "NONE",
+            "scope": "CHANGED",
+            "confidentialityImpact": "HIGH",
+            "integrityImpact": "HIGH",
+            "availabilityImpact": "HIGH",
+            "baseSeverity": "CRITICAL",
+            "version": "3.1"
+          },
+          "cwes": ["CWE-502", "CWE-400", "CWE-20"],
+          "description": "Synthetic fixture text. JNDI features used in configuration, log messages, and parameters do not protect against attacker-controlled LDAP lookups.",
+          "notes": "",
+          "references": [
+            { "source": "NVD", "url": "https://nvd.nist.gov/vuln/detail/CVE-2021-44228", "name": "NVD" }
+          ],
+          "vulnerableSoftware": [
+            {
+              "software": {
+                "id": "cpe:2.3:a:apache:log4j:*:*:*:*:*:*:*:*",
+                "versionEndExcluding": "2.15.0",
+                "vulnerabilityIdMatched": "true"
+              }
+            }
+          ]
+        },
+        {
+          "source": "NVD",
+          "name": "CVE-2021-45046",
+          "severity": "CRITICAL",
+          "cvssv3": {
+            "baseScore": 9.0,
+            "baseSeverity": "CRITICAL",
+            "version": "3.1"
+          },
+          "description": "Synthetic fixture text. Incomplete fix for the JNDI lookup issue in Log4j 2.15.0.",
+          "references": [],
+          "vulnerableSoftware": []
+        }
+      ]
+    },
+    {
+      "isVirtual": false,
+      "fileName": "commons-text-1.9.jar",
+      "filePath": "/build/libs/commons-text-1.9.jar",
+      "md5": "11111111111111111111111111111111",
+      "sha1": "1111111111111111111111111111111111111111",
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "description": "Synthetic fixture metadata for a dependency with no findings.",
+      "license": "Apache-2.0",
+      "packages": [{ "id": "pkg:maven/org.apache.commons/commons-text@1.9", "confidence": "HIGHEST" }],
+      "vulnerabilities": []
+    },
+    {
+      "isVirtual": false,
+      "fileName": "spring-core-5.2.0.RELEASE.jar",
+      "filePath": "/build/libs/spring-core-5.2.0.RELEASE.jar",
+      "md5": "22222222222222222222222222222222",
+      "sha1": "2222222222222222222222222222222222222222",
+      "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "description": "Synthetic fixture metadata for a Spring artifact.",
+      "license": "Apache-2.0",
+      "packages": [{ "id": "pkg:maven/org.springframework/spring-core@5.2.0.RELEASE", "confidence": "HIGHEST" }],
+      "vulnerabilities": [
+        {
+          "source": "NVD",
+          "name": "CVE-2022-22965",
+          "severity": "HIGH",
+          "cvssv3": {
+            "baseScore": 9.8,
+            "baseSeverity": "CRITICAL",
+            "version": "3.1"
+          },
+          "description": "Synthetic fixture text. Spring Framework RCE via data binding on JDK 9 and later.",
+          "references": [],
+          "vulnerableSoftware": []
+        }
+      ]
+    }
+  ]
+}

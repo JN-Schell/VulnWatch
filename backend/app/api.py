@@ -346,7 +346,13 @@ def update_asset(asset_id: int, data: AssetInput, user=Depends(require("write"))
 @app.get("/api/imports/adapters")
 def adapters(user=Depends(require("read"))):
     return [
-        {"id": key, "extension": adapter.extension, "schema_version": "1.0"}
+        {
+            "id": key,
+            "extension": adapter.extension,
+            "schema_version": adapter.schema_version,
+            "requires_asset": adapter.requires_asset,
+            "documentation": adapter.documentation,
+        }
         for key, adapter in ADAPTERS.items()
     ]
 
@@ -371,6 +377,7 @@ def imports(user=Depends(require("read")), db=Depends(get_db)):
 @app.post("/api/imports", status_code=201)
 def upload(
     adapter: str = Query(max_length=50, pattern=r"^[a-z][a-z0-9-]*$"),
+    asset: str = Query(default="", max_length=200, pattern=r"^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$"),
     file: UploadFile = File(...),
     user=Depends(require("write")),
     db=Depends(get_db),
@@ -387,7 +394,7 @@ def upload(
     )
     try:
         content = file.file.read(MAX_BYTES + 1)
-        rows = parse_import(adapter, content, filename)
+        rows = parse_import(adapter, content, filename, asset)
         db.add(job)
         db.flush()
         import_rows(db, rows, job, user.id)

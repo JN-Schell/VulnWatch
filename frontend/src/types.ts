@@ -68,6 +68,13 @@ export type Dashboard = {
     overdue: number;
   }[];
 };
+export type AdapterContract = {
+  id: string;
+  extension: string;
+  schema_version: string;
+  requires_asset: boolean;
+  documentation: string;
+};
 export type ImportJob = {
   id: number;
   filename: string;
