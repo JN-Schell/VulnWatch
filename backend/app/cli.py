@@ -105,10 +105,16 @@ def seed_demo(db):
 def main():
     parser = argparse.ArgumentParser(description="VulnWatch administration")
     parser.add_argument(
-        "command", choices=["bootstrap", "create-admin", "seed-demo", "reset-password", "sync"]
+        "command", choices=["bootstrap", "create-admin", "seed-demo", "reset-password", "sync", "backfill"]
     )
     parser.add_argument("--email", default="admin@example.com")
     parser.add_argument("--name", default="Security Administrator")
+    parser.add_argument(
+        "--days",
+        type=int,
+        default=None,
+        help="Backfill the last N days of modifications (1-120); explicit operator action",
+    )
     args = parser.parse_args()
     with SessionLocal() as db:
         bootstrap(db)
@@ -135,6 +141,17 @@ def main():
 
             if not synchronize():
                 raise SystemExit("Synchronization failed or another worker owns the lock; inspect /api/sync")
+        elif args.command == "backfill":
+            from app.nvd import MAX_BACKFILL_DAYS, synchronize
+
+            if args.days is None:
+                raise SystemExit("backfill requires --days (1-120)")
+            if not 1 <= args.days <= MAX_BACKFILL_DAYS:
+                raise SystemExit(f"--days must be between 1 and {MAX_BACKFILL_DAYS}")
+            if not synchronize(backfill_days=args.days):
+                raise SystemExit(
+                    "Backfill failed, was cancelled, or another worker owns the lock; inspect /api/sync"
+                )
 
 
 if __name__ == "__main__":

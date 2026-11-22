@@ -1592,6 +1592,19 @@ function App() {
                   CVE records
                 </span>
                 <span>Last sync: {date(sync?.last_success || null)}</span>
+                <span>Pending enrichment: {sync?.pending_enrichment ?? 0}</span>
+                {sync?.running && (
+                  <span>
+                    <LoaderCircle size={16} className="spin" />
+                    {sync.cancel_requested
+                      ? "Cancelling after current page…"
+                      : `Running · ${sync.last_run?.pages_fetched ?? 0}${
+                          sync.last_run?.pages_total
+                            ? `/${sync.last_run.pages_total}`
+                            : ""
+                        } pages`}
+                  </span>
+                )}
                 {user.role === "admin" && (
                   <button
                     className="secondary"
@@ -1607,9 +1620,45 @@ function App() {
                     {sync?.requested ? "Sync queued" : "Request sync"}
                   </button>
                 )}
+                {user.role === "admin" && sync?.running && (
+                  <button
+                    className="secondary"
+                    disabled={busy || sync.cancel_requested}
+                    onClick={() =>
+                      action(
+                        () => api("/sync/cancel", { method: "POST" }),
+                        "Cancellation requested",
+                      )
+                    }
+                  >
+                    <X size={14} />
+                    {sync.cancel_requested ? "Cancelling…" : "Cancel sync"}
+                  </button>
+                )}
               </div>
               {sync?.last_error && (
                 <div className="error">{sync.last_error}</div>
+              )}
+              {sync?.last_run && (
+                <div className="summary-strip">
+                  <span>
+                    Last run: {titleCase(sync.last_run.status)} ·{" "}
+                    {titleCase(sync.last_run.kind)}
+                  </span>
+                  <span>
+                    Pages: {sync.last_run.pages_fetched}
+                    {sync.last_run.pages_total
+                      ? `/${sync.last_run.pages_total}`
+                      : ""}
+                  </span>
+                  <span>Retries: {sync.last_run.retry_count}</span>
+                  {sync.last_run.last_page_ms !== null && (
+                    <span>Last page: {sync.last_run.last_page_ms} ms</span>
+                  )}
+                  <span className="muted">
+                    Finished {date(sync.last_run.completed_at || null)}
+                  </span>
+                </div>
               )}
               <section className="panel">
                 <div className="filter-bar">

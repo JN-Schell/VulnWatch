@@ -232,6 +232,40 @@ class SyncState(Base):
     last_success: Mapped[datetime | None] = mapped_column(DateTime)
     last_error: Mapped[str | None] = mapped_column(String(200))
     requested: Mapped[bool] = mapped_column(default=False)
+    cancel_requested: Mapped[bool] = mapped_column(default=False)
+
+
+class SyncRun(Base):
+    __tablename__ = "sync_runs"
+    __table_args__ = (CheckConstraint("status IN ('running','completed','failed','cancelled')"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    kind: Mapped[str] = mapped_column(String(20), default="sync")
+    start: Mapped[datetime] = mapped_column(DateTime)
+    end: Mapped[datetime] = mapped_column(DateTime)
+    status: Mapped[str] = mapped_column(String(20), default="running")
+    pages_fetched: Mapped[int] = mapped_column(default=0)
+    pages_total: Mapped[int | None] = mapped_column(Integer)
+    cursor_index: Mapped[int] = mapped_column(default=0)
+    retry_count: Mapped[int] = mapped_column(default=0)
+    last_page_ms: Mapped[int | None] = mapped_column(Integer)
+    error: Mapped[str | None] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(default=utcnow)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+
+class SyncStagedCVE(Base):
+    __tablename__ = "sync_staged_cves"
+    __table_args__ = (
+        UniqueConstraint("run_id", "cve_id"),
+        Index("ix_sync_staged_run_page", "run_id", "page_index"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("sync_runs.id"))
+    page_index: Mapped[int] = mapped_column(Integer)
+    cve_id: Mapped[str] = mapped_column(String(30))
+    payload: Mapped[dict] = mapped_column(JSON)
+    staged_at: Mapped[datetime] = mapped_column(default=utcnow)
 
 
 class RateBucket(Base):

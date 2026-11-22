@@ -34,7 +34,8 @@ Use a private password entry mechanism in real scripts; the illustrative literal
 | GET `/cves` | read | Local NVD mirror search |
 | GET `/cves/{id}` | read | Authoritative enrichment and metadata |
 | GET / PUT `/policy` | read / admin | Current thresholds / policy update and reassessment |
-| GET / POST `/sync` | read / admin | Worker state / queue sync |
+| GET / POST `/sync` | read / admin | Worker state and latest run metrics / queue a sync (two-hour cooldown) |
+| POST `/sync/cancel` | admin | Request cancellation of a running sync; stops after the current page and discards staged data |
 | GET `/dashboard` | read | Database-derived posture, aging, trends and performance |
 | GET `/reports/export` | read | Audit-recorded CSV export; optional `asset_id` |
 | GET `/notifications` | read | Last 50 workspace-wide in-app notifications |

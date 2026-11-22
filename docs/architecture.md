@@ -20,7 +20,7 @@ flowchart LR
 - Authentication uses random, server-revocable sessions; only a SHA-256 digest is stored. Cookies are HttpOnly, SameSite=Strict, and Secure outside explicit development mode. Writes require a per-session CSRF token and a trusted Origin.
 - Roles map to permissions on the server: administrators manage users/policy/synchronization; analysts manage assets, imports and remediation; viewers read operational data. Audit access is administrator-only.
 - No scanning, exploitation, outbound user-supplied URLs, or auto-following CVE reference URLs.
-- API and worker share a database, not process memory. Synchronization uses a PostgreSQL advisory lock plus a visible lease and persists its watermark only after a complete window. Database-backed request buckets work across API replicas.
+- API and worker share a database, not process memory. Synchronization uses a PostgreSQL advisory lock plus a visible lease, stages each fetched page, and persists its watermark only after a complete window. Database-backed request buckets work across API replicas.
 
 ## Schema and invariants
 
@@ -35,6 +35,7 @@ erDiagram
   cve_records ||--o| vulnerabilities : enriches
   vulnerabilities ||--o{ findings : identifies
   import_jobs ||--o{ findings : introduced
+  sync_runs ||--o{ sync_staged_cves : stages
   findings ||--o{ finding_history : records
   findings ||--o| remediation_assignments : assigns
   users ||--o{ remediation_assignments : owns

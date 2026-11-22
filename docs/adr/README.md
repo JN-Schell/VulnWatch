@@ -8,5 +8,6 @@ Architecture Decision Records (ADRs) capture significant technical decisions, th
 | [0002](0002-separate-cvss-and-priority.md) | Keep CVSS separate from custom risk priority | Accepted |
 | [0003](0003-adapter-based-imports.md) | Adapter-based, in-memory scan imports | Accepted |
 | [0004](0004-server-side-sessions.md) | Server-side sessions with CSRF and Origin checks | Accepted |
+| [0005](0005-staged-sync-windows.md) | Stage NVD pages before applying a synchronization window | Accepted |
 
 New ADRs use the filename `NNNN-short-title.md` and include status, context, decision, and consequences.
