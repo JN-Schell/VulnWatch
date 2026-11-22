@@ -91,14 +91,32 @@ export type Notification = {
   finding_id: number | null;
   created_at: string;
 };
+export type SyncRun = {
+  id: number;
+  kind: string;
+  status: string;
+  window_start: string;
+  window_end: string;
+  pages_fetched: number;
+  pages_total: number | null;
+  retry_count: number;
+  last_page_ms: number | null;
+  error: string | null;
+  started_at: string;
+  updated_at: string;
+  completed_at: string | null;
+};
 export type Sync = {
   watermark: string | null;
   last_attempt: string | null;
   last_success: string | null;
   last_error: string | null;
   requested: boolean;
+  cancel_requested: boolean;
   running: boolean;
   api_key_configured: boolean;
+  pending_enrichment: number;
+  last_run: SyncRun | null;
 };
 export type CVE = {
   id: string;

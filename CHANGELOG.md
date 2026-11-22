@@ -6,6 +6,7 @@ All notable changes to VulnWatch are documented here. The format follows [Keep a
 
 ### Added
 
+- NVD synchronization now stages each fetched page in `sync_staged_cves` and applies a window atomically only after its final page, so a failed window is never exposed as partially complete and a restarted run resumes from its recorded cursor instead of refetching. Runs are recorded in `sync_runs` with page counts, retry count, and last-page duration, surfaced through `/api/sync` and the CVE intelligence screen. Administrators can cancel a running sync through `POST /api/sync/cancel`, and `python -m app.cli backfill --days N` provides an explicit bounded (1–120 days) operator backfill. Recorded in ADR 0005.
 - Trivy, Grype, and OWASP Dependency-Check JSON import adapters with synthetic fixtures in `samples/`, documented field mappings, namespace-qualified non-CVE identities, and a required explicit target asset so vendor artifact metadata never guesses VulnWatch inventory. `/imports/adapters` now reports each contract's schema version, documentation anchor, and asset requirement.
 - Automated axe-core Playwright coverage for the login screen, critical pages, finding and remediation dialogs, keyboard focus, and both themes, with a hidden summary for the risk-trajectory chart and a zero-retry CI project.
 - CodeQL analysis for Python and JavaScript/TypeScript, and weekly grouped Dependabot updates for uv, npm, and GitHub Actions.

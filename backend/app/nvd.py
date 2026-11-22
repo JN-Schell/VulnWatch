@@ -4,15 +4,17 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import urlsplit
 
 import httpx
-from sqlalchemy import or_, select, text, update
+from sqlalchemy import delete, func, or_, select, text, update
 
 from app.config import get_settings
 from app.db import SessionLocal, engine, utcnow
-from app.models import CVERecord, Finding, RiskPolicy, SyncState, Vulnerability
+from app.models import CVERecord, Finding, RiskPolicy, SyncRun, SyncStagedCVE, SyncState, Vulnerability
 from app.risk import assess
 from app.security import audit
 
 NVD_URL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
+PAGE_SIZE = 2000
+MAX_BACKFILL_DAYS = 120
 
 
 class NVDError(RuntimeError):
@@ -133,6 +135,7 @@ class NVDClient:
             follow_redirects=False,
         )
         self.last_request = None
+        self.retries = 0
 
     def close(self):
         self.client.close()
@@ -148,6 +151,7 @@ class NVDClient:
                 if response.status_code == 429 or response.status_code >= 500:
                     if attempt == 2:
                         raise NVDError("NVD rate limited or unavailable after three attempts")
+                    self.retries += 1
                     retry_after = response.headers.get("retry-after", "")
                     self.sleep(min(120, float(retry_after)) if retry_after.isdigit() else 6 * 2**attempt)
                     continue
@@ -159,34 +163,47 @@ class NVDClient:
             except (httpx.TimeoutException, httpx.NetworkError):
                 if attempt == 2:
                     raise NVDError("NVD network failure after three attempts") from None
+                self.retries += 1
                 self.sleep(6 * 2**attempt)
             except (httpx.HTTPStatusError, ValueError):
                 raise NVDError("NVD request rejected or returned malformed JSON") from None
         raise NVDError("NVD request failed")
 
-    def window(self, start, end):
-        index = 0
+    def page(self, start, end, index):
+        payload = self.request(
+            {
+                "lastModStartDate": start.isoformat(timespec="milliseconds") + "Z",
+                "lastModEndDate": end.isoformat(timespec="milliseconds") + "Z",
+                "startIndex": index,
+                "resultsPerPage": PAGE_SIZE,
+            }
+        )
+        total = payload.get("totalResults")
+        if not isinstance(total, int) or total < 0 or payload.get("startIndex") != index:
+            raise NVDError("Invalid NVD pagination metadata")
+        entries = payload["vulnerabilities"]
+        if not isinstance(entries, list):
+            raise NVDError("Invalid NVD response schema")
+        if not entries and index < total:
+            raise NVDError("NVD pagination made no progress")
+        pages_total = -(-total // PAGE_SIZE)
+        return [entry["cve"] for entry in entries], total, pages_total
+
+    def pages(self, start, end, cursor=0):
+        index = cursor
         for _ in range(10000):
-            payload = self.request(
-                {
-                    "lastModStartDate": start.isoformat(timespec="milliseconds") + "Z",
-                    "lastModEndDate": end.isoformat(timespec="milliseconds") + "Z",
-                    "startIndex": index,
-                    "resultsPerPage": 2000,
-                }
-            )
-            entries = payload["vulnerabilities"]
-            total = payload.get("totalResults")
-            if not isinstance(total, int) or total < 0 or payload.get("startIndex") != index:
-                raise NVDError("Invalid NVD pagination metadata")
-            for entry in entries:
-                yield entry["cve"]
+            entries, total, pages_total = self.page(start, end, index)
+            yield index, entries, total, pages_total
             index += len(entries)
             if index >= total:
                 return
             if not entries:
                 raise NVDError("NVD pagination made no progress")
         raise NVDError("NVD pagination safety limit exceeded")
+
+    def window(self, start, end):
+        for _, entries, _, _ in self.pages(start, end):
+            yield from entries
 
 
 def upsert_cve(db, payload):
@@ -216,7 +233,143 @@ def upsert_cve(db, payload):
     return cve
 
 
-def synchronize(client=None):
+def _open_run(db, kind, start, end):
+    run = SyncRun(kind=kind, start=start, end=end, status="running")
+    db.add(run)
+    db.flush()
+    return run
+
+
+def _resume_run(db, kind, start, end):
+    run = db.scalar(
+        select(SyncRun)
+        .where(
+            SyncRun.kind == kind,
+            SyncRun.status.in_(("running", "failed")),
+            SyncRun.start == start,
+            SyncRun.end == end,
+        )
+        .order_by(SyncRun.id.desc())
+    )
+    if run:
+        run.status = "running"
+        run.error = None
+        return run, True
+    return _open_run(db, kind, start, end), False
+
+
+def _stage(db, run, index, entries, seen):
+    for entry in entries:
+        identifier = entry.get("id")
+        if not isinstance(identifier, str):
+            raise NVDError("NVD returned an entry without an identifier")
+        if identifier in seen:
+            continue
+        seen.add(identifier)
+        db.add(
+            SyncStagedCVE(
+                run_id=run.id,
+                page_index=index,
+                cve_id=identifier[:30],
+                payload=entry,
+            )
+        )
+
+
+def _apply_staged(db, run):
+    staged = list(
+        db.scalars(select(SyncStagedCVE).where(SyncStagedCVE.run_id == run.id).order_by(SyncStagedCVE.id))
+    )
+    for row in staged:
+        upsert_cve(db, row.payload)
+    db.flush()
+    return len(staged)
+
+
+def _discard_staged(db, run):
+    db.execute(delete(SyncStagedCVE).where(SyncStagedCVE.run_id == run.id))
+
+
+def _retire_empty_run(db, run):
+    """Close a run that has no staged pages; nothing remains to apply."""
+    if db.scalar(select(func.count(SyncStagedCVE.id)).where(SyncStagedCVE.run_id == run.id)):
+        return False
+    run.status = "failed"
+    run.error = "Abandoned without staged data"
+    run.updated_at = utcnow()
+    run.completed_at = utcnow()
+    db.commit()
+    return True
+
+
+def _record(db, run, **values):
+    for key, value in values.items():
+        setattr(run, key, value)
+    run.updated_at = utcnow()
+    db.commit()
+
+
+def _cancelled(db):
+    state = db.get(SyncState, 1)
+    db.refresh(state)
+    return bool(state.cancel_requested)
+
+
+def sync_window(db, client, start, end, kind="sync", checkpoint=None):
+    """Stage every page of one window, then apply it atomically.
+
+    Pages are committed to ``sync_staged_cves`` as they arrive so a crash or
+    restart resumes from the recorded cursor instead of refetching. The window's
+    CVEs and watermark become visible together only after the final page is
+    staged, so a checkpoint can never expose a partially applied window.
+    """
+    run, resumed = _resume_run(db, kind, start, end)
+    db.commit()
+    existing = set(db.scalars(select(SyncStagedCVE.cve_id).where(SyncStagedCVE.run_id == run.id)))
+    seen = existing
+    pages = run.pages_fetched
+    cursor = run.cursor_index
+    while True:
+        page_start = time.monotonic()
+        entries, total, pages_total = client.page(start, end, cursor)
+        if pages_total != run.pages_total:
+            run.pages_total = pages_total
+        cursor += len(entries)
+        db.flush()
+        _stage(db, run, pages, entries, seen)
+        run.pages_fetched = pages + 1
+        run.cursor_index = cursor
+        run.retry_count = client.retries
+        _record(db, run, last_page_ms=int((time.monotonic() - page_start) * 1000))
+        pages += 1
+        if checkpoint:
+            checkpoint({"pages": pages, "cursor": cursor, "pages_total": pages_total})
+        if _cancelled(db):
+            _discard_staged(db, run)
+            db.execute(update(SyncState).where(SyncState.id == 1).values(cancel_requested=False))
+            _record(db, run, status="cancelled", completed_at=utcnow())
+            return "cancelled"
+        if cursor >= total or not entries:
+            break
+    applied = _apply_staged(db, run)
+    state = db.get(SyncState, 1)
+    state.watermark = end
+    state.last_success = utcnow()
+    state.last_error = None
+    state.lease_until = utcnow() + timedelta(minutes=5)
+    _discard_staged(db, run)
+    audit(
+        db,
+        None,
+        "nvd.sync" if kind == "sync" else "nvd.backfill",
+        "nvd",
+        {"start": start.isoformat(), "end": end.isoformat(), "applied": applied, "resumed": resumed},
+    )
+    _record(db, run, status="completed", completed_at=utcnow())
+    return "completed"
+
+
+def synchronize(client=None, backfill_days=None):
     settings = get_settings()
     now = utcnow()
     lock_connection = None
@@ -229,7 +382,12 @@ def synchronize(client=None):
         acquired = db.execute(
             update(SyncState)
             .where(SyncState.id == 1, or_(SyncState.lease_until.is_(None), SyncState.lease_until < now))
-            .values(lease_until=now + timedelta(minutes=5), last_attempt=now, requested=False)
+            .values(
+                lease_until=now + timedelta(minutes=5),
+                last_attempt=now,
+                requested=False,
+                cancel_requested=False,
+            )
         )
         db.commit()
         if not acquired.rowcount:
@@ -252,24 +410,38 @@ def synchronize(client=None):
                 db.commit()
         with SessionLocal() as db:
             state = db.get(SyncState, 1)
-            start = (
-                (state.watermark - timedelta(minutes=5))
-                if state.watermark
-                else now - timedelta(days=settings.nvd_initial_days)
+            if backfill_days:
+                start = now - timedelta(days=min(backfill_days, MAX_BACKFILL_DAYS))
+            elif state.watermark:
+                start = state.watermark - timedelta(minutes=5)
+            else:
+                start = now - timedelta(days=settings.nvd_initial_days)
+        kind = "backfill" if backfill_days else "sync"
+        with SessionLocal() as db:
+            interrupted = list(
+                db.scalars(
+                    select(SyncRun)
+                    .where(SyncRun.kind == kind, SyncRun.status.in_(("running", "failed")))
+                    .order_by(SyncRun.id)
+                )
             )
+        for pending in interrupted:
+            # A crashed or previously failed run may have staged pages. Finish that
+            # exact window before starting new ranges so its work is not lost, and
+            # retire runs whose staged data is already gone.
+            with SessionLocal() as db:
+                run = db.get(SyncRun, pending.id)
+                if _retire_empty_run(db, run):
+                    continue
+                outcome = sync_window(db, client, run.start, run.end, kind=kind)
+            if outcome == "cancelled":
+                return False
         while start < now:
             end = min(start + timedelta(days=119), now)
             with SessionLocal() as db:
-                for payload in client.window(start, end):
-                    upsert_cve(db, payload)
-                    db.flush()
-                state = db.get(SyncState, 1)
-                state.watermark = end
-                state.last_success = utcnow()
-                state.last_error = None
-                state.lease_until = utcnow() + timedelta(minutes=5)
-                audit(db, None, "nvd.sync", "nvd", {"start": start.isoformat(), "end": end.isoformat()})
-                db.commit()
+                outcome = sync_window(db, client, start, end, kind=kind)
+            if outcome == "cancelled":
+                return False
             start = end
         return True
     except Exception as error:
@@ -280,6 +452,15 @@ def synchronize(client=None):
                 if isinstance(error, NVDError)
                 else "Synchronization failed; check service logs"
             )
+            for run in db.scalars(select(SyncRun).where(SyncRun.status == "running")):
+                resumable = bool(
+                    db.scalar(select(func.count(SyncStagedCVE.id)).where(SyncStagedCVE.run_id == run.id))
+                )
+                run.status = "failed"
+                run.error = state.last_error
+                run.updated_at = utcnow()
+                # Staged pages stay for the next attempt, so the run is not final.
+                run.completed_at = None if resumable else utcnow()
             db.commit()
         return False
     finally:

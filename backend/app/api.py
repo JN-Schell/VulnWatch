@@ -35,6 +35,7 @@ from app.models import (
     RiskPolicy,
     Role,
     Session,
+    SyncRun,
     SyncState,
     User,
     Vulnerability,
@@ -650,14 +651,39 @@ def update_policy(data: PolicyInput, user=Depends(require("admin")), db=Depends(
 @app.get("/api/sync")
 def sync_status(user=Depends(require("read")), db=Depends(get_db)):
     state = db.get(SyncState, 1)
+    run = db.scalar(select(SyncRun).order_by(SyncRun.id.desc()))
+    queued_pending = db.scalar(
+        select(func.count(CVERecord.id)).where(CVERecord.nvd_status == "Pending enrichment")
+    )
     return {
         "watermark": state.watermark,
         "last_attempt": state.last_attempt,
         "last_success": state.last_success,
         "last_error": state.last_error,
         "requested": state.requested,
+        "cancel_requested": state.cancel_requested,
         "running": bool(state.lease_until and state.lease_until > utcnow()),
         "api_key_configured": bool(settings.nvd_api_key),
+        "pending_enrichment": queued_pending or 0,
+        "last_run": (
+            {
+                "id": run.id,
+                "kind": run.kind,
+                "status": run.status,
+                "window_start": run.start,
+                "window_end": run.end,
+                "pages_fetched": run.pages_fetched,
+                "pages_total": run.pages_total,
+                "retry_count": run.retry_count,
+                "last_page_ms": run.last_page_ms,
+                "error": run.error,
+                "started_at": run.created_at,
+                "updated_at": run.updated_at,
+                "completed_at": run.completed_at,
+            }
+            if run
+            else None
+        ),
     }
 
 
@@ -670,6 +696,21 @@ def request_sync(user=Depends(require("admin")), db=Depends(get_db)):
     audit(db, user.id, "nvd.requested", "nvd")
     db.commit()
     return {"status": "queued", "message": "The worker must be running to process this request"}
+
+
+@app.post("/api/sync/cancel", status_code=202)
+def cancel_sync(user=Depends(require("admin")), db=Depends(get_db)):
+    state = db.get(SyncState, 1)
+    if not (state.lease_until and state.lease_until > utcnow()):
+        raise HTTPException(409, "No synchronization is currently running")
+    state.cancel_requested = True
+    state.requested = False
+    audit(db, user.id, "nvd.cancel_requested", "nvd")
+    db.commit()
+    return {
+        "status": "cancel_requested",
+        "message": "The worker stops after the current page and discards staged data",
+    }
 
 
 def report_data(db, asset_id=None):
