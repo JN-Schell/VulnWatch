@@ -14,7 +14,9 @@ Persist each fetched page to `sync_staged_cves` as it arrives, keyed by `sync_ru
 1. Open or resume a `sync_runs` row for the window, recording `cursor_index`, `pages_fetched`, `pages_total`, `retry_count`, and `last_page_ms`.
 2. Fetch a page, deduplicate identifiers already staged for this run, stage the rows, update the cursor, and commit.
 3. On the last page, apply all staged rows in a single transaction together with the watermark and audit event, then discard the staged rows.
-4. On failure, roll back the window's apply step; staged rows and the cursor remain so the next attempt resumes at the recorded index.
+4. On failure, roll back the window's apply step; staged rows and the cursor remain so the next attempt resumes at the recorded index. A `failed` run is resumable: the next synchronization finishes any window that still has staged pages, and retires a failed run whose staged pages are already gone.
+
+A page that reports fewer entries than its own `totalResults` while the cursor is still below that total is treated as a pagination fault rather than completion, so the watermark is never advanced over records the upstream said exist.
 
 A running window may be cancelled through `POST /api/sync/cancel`. Cancellation is checked between pages, discards the staged rows, leaves the watermark unchanged, and marks the run `cancelled`. A new run clears any stale cancellation flag.
 

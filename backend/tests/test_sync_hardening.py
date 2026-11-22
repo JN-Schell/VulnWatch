@@ -212,19 +212,16 @@ def test_crashed_window_is_resumed_by_the_next_synchronize(database):
         db.get(SyncState, 1).watermark = end
         db.commit()
 
-    # The range is already covered, so no new pages should be requested.
+    # The interrupted window resumes at its recorded cursor (2) and finds the
+    # window already exhausted. The later index-0 read is the watermark overlap,
+    # which legitimately has no new modifications.
     requested = []
 
     def handler(request):
-        requested.append(int(request.url.params["startIndex"]))
-        return httpx.Response(
-            200,
-            json={
-                "totalResults": 2,
-                "startIndex": int(request.url.params["startIndex"]),
-                "vulnerabilities": [],
-            },
-        )
+        index = int(request.url.params["startIndex"])
+        requested.append(index)
+        total = 2 if index >= 2 else 0
+        return httpx.Response(200, json={"totalResults": total, "startIndex": index, "vulnerabilities": []})
 
     client = client_for(handler)
     assert synchronize(client)
@@ -233,11 +230,78 @@ def test_crashed_window_is_resumed_by_the_next_synchronize(database):
     # The interrupted window resumes at its recorded cursor instead of refetching
     # pages 0 and 1. The later index-0 read is the separate watermark overlap.
     assert requested[0] == 2
-    assert 1 not in requested
     with database() as db:
         assert db.scalar(select(func.count(CVERecord.id))) == 2
         assert db.scalar(select(func.count(SyncStagedCVE.id))) == 0
         assert db.scalar(select(SyncRun).where(SyncRun.pages_fetched > 0)).status == "completed"
+
+
+def test_empty_page_while_results_remain_is_rejected(database):
+    """A short page must not be mistaken for end-of-window."""
+
+    def handler(request):
+        return httpx.Response(200, json={"totalResults": 2, "startIndex": 0, "vulnerabilities": []})
+
+    client = client_for(handler)
+    start, end = window()
+    with database() as db:
+        with pytest.raises(NVDError):
+            sync_window(db, client, start, end)
+        db.rollback()
+    client.close()
+    with database() as db:
+        assert db.scalar(select(func.count(CVERecord.id))) == 0
+        assert db.get(SyncState, 1).watermark is None
+
+
+def test_failed_run_with_staged_pages_is_resumed_later(database):
+    """A run that failed mid-window must be finished, not orphaned."""
+    start, end = window()
+    failing = client_for(paged_handler(2, page_size=1, fail_at=1))
+    with database() as db:
+        with pytest.raises(NVDError):
+            sync_window(db, failing, start, end)
+        db.rollback()
+    failing.close()
+    with database() as db:
+        run = db.scalar(select(SyncRun))
+        assert run.cursor_index == 1
+        assert db.scalar(select(func.count(SyncStagedCVE.id))) == 1
+
+    # Mark it failed the way the outer handler does.
+    with database() as db:
+        db.scalar(select(SyncRun)).status = "failed"
+        db.commit()
+
+    requested = []
+
+    def resumed_handler(request):
+        requested.append(int(request.url.params["startIndex"]))
+        return paged_handler(2, page_size=1)(request)
+
+    client = client_for(resumed_handler)
+    assert synchronize(client)
+    client.close()
+
+    assert requested[0] == 1
+    with database() as db:
+        assert db.scalar(select(func.count(CVERecord.id))) == 2
+        assert db.scalar(select(func.count(SyncStagedCVE.id))) == 0
+
+
+def test_failed_run_without_staged_pages_is_retired(database):
+    start, end = window()
+    with database() as db:
+        db.add(SyncRun(kind="sync", start=start, end=end, status="failed"))
+        db.commit()
+
+    client = client_for(paged_handler(1, page_size=1))
+    assert synchronize(client)
+    client.close()
+    with database() as db:
+        orphan = db.scalar(select(SyncRun).where(SyncRun.error == "Abandoned without staged data"))
+        assert orphan is not None
+        assert orphan.completed_at is not None
 
 
 def test_sync_status_exposes_run_metrics(authenticated, database):

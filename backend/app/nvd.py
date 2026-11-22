@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import urlsplit
 
 import httpx
-from sqlalchemy import delete, or_, select, text, update
+from sqlalchemy import delete, func, or_, select, text, update
 
 from app.config import get_settings
 from app.db import SessionLocal, engine, utcnow
@@ -184,6 +184,8 @@ class NVDClient:
         entries = payload["vulnerabilities"]
         if not isinstance(entries, list):
             raise NVDError("Invalid NVD response schema")
+        if not entries and index < total:
+            raise NVDError("NVD pagination made no progress")
         pages_total = -(-total // PAGE_SIZE)
         return [entry["cve"] for entry in entries], total, pages_total
 
@@ -241,10 +243,17 @@ def _open_run(db, kind, start, end):
 def _resume_run(db, kind, start, end):
     run = db.scalar(
         select(SyncRun)
-        .where(SyncRun.kind == kind, SyncRun.status == "running", SyncRun.start == start, SyncRun.end == end)
+        .where(
+            SyncRun.kind == kind,
+            SyncRun.status.in_(("running", "failed")),
+            SyncRun.start == start,
+            SyncRun.end == end,
+        )
         .order_by(SyncRun.id.desc())
     )
     if run:
+        run.status = "running"
+        run.error = None
         return run, True
     return _open_run(db, kind, start, end), False
 
@@ -279,6 +288,18 @@ def _apply_staged(db, run):
 
 def _discard_staged(db, run):
     db.execute(delete(SyncStagedCVE).where(SyncStagedCVE.run_id == run.id))
+
+
+def _retire_empty_run(db, run):
+    """Close a run that has no staged pages; nothing remains to apply."""
+    if db.scalar(select(func.count(SyncStagedCVE.id)).where(SyncStagedCVE.run_id == run.id)):
+        return False
+    run.status = "failed"
+    run.error = "Abandoned without staged data"
+    run.updated_at = utcnow()
+    run.completed_at = utcnow()
+    db.commit()
+    return True
 
 
 def _record(db, run, **values):
@@ -400,15 +421,19 @@ def synchronize(client=None, backfill_days=None):
             interrupted = list(
                 db.scalars(
                     select(SyncRun)
-                    .where(SyncRun.kind == kind, SyncRun.status == "running")
+                    .where(SyncRun.kind == kind, SyncRun.status.in_(("running", "failed")))
                     .order_by(SyncRun.id)
                 )
             )
         for pending in interrupted:
-            # A crashed run left staged pages. Finish that exact window before
-            # starting new ranges so its work is neither applied early nor lost.
+            # A crashed or previously failed run may have staged pages. Finish that
+            # exact window before starting new ranges so its work is not lost, and
+            # retire runs whose staged data is already gone.
             with SessionLocal() as db:
-                outcome = sync_window(db, client, pending.start, pending.end, kind=kind)
+                run = db.get(SyncRun, pending.id)
+                if _retire_empty_run(db, run):
+                    continue
+                outcome = sync_window(db, client, run.start, run.end, kind=kind)
             if outcome == "cancelled":
                 return False
         while start < now:
@@ -428,10 +453,14 @@ def synchronize(client=None, backfill_days=None):
                 else "Synchronization failed; check service logs"
             )
             for run in db.scalars(select(SyncRun).where(SyncRun.status == "running")):
+                resumable = bool(
+                    db.scalar(select(func.count(SyncStagedCVE.id)).where(SyncStagedCVE.run_id == run.id))
+                )
                 run.status = "failed"
                 run.error = state.last_error
                 run.updated_at = utcnow()
-                run.completed_at = utcnow()
+                # Staged pages stay for the next attempt, so the run is not final.
+                run.completed_at = None if resumable else utcnow()
             db.commit()
         return False
     finally:
