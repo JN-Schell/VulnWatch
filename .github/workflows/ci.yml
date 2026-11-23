@@ -31,7 +31,7 @@ jobs:
       DATABASE_URL: postgresql+psycopg://vulnwatch:ci-only-disposable-password@localhost:5432/vulnwatch_test
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
         with:
           version: "0.13.8"
           enable-cache: true
@@ -64,7 +64,7 @@ jobs:
       VULNWATCH_ADMIN_PASSWORD: ci-browser-test-only-password
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
         with:
           version: "0.13.8"
       - uses: actions/setup-node@v7
