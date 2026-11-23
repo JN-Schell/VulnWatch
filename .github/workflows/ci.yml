@@ -74,7 +74,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: cd backend && uv sync --frozen --python 3.12 && uv run alembic upgrade head && uv run python -m app.cli create-admin
       - run: cd frontend && npm ci && npm run build && npx prettier --check src tests *.ts && npx playwright install --with-deps chromium && npm run test:e2e
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: browser-traces
